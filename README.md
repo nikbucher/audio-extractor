@@ -26,6 +26,9 @@ This project serves as my learning playground for:
 The easiest way to install Audio Extractor is to download the pre-built binaries from
 the [Releases page](https://github.com/nikbucher/audio-extractor/releases).
 
+**Note:** This application requires FFmpeg to be installed on your system. See
+the [FFmpeg Installation](#ffmpeg-installation) section below.
+
 1. Go to the [Releases page](https://github.com/nikbucher/audio-extractor/releases)
 2. Download the appropriate version for your operating system:
    - **Windows**: `.msi` installer or `.exe` executable

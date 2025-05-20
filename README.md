@@ -19,45 +19,113 @@ This project serves as my learning playground for:
 - Extract entire audio track or specific time ranges
 - Simple and intuitive user interface
 
-## Recommended IDE Setup
+## Installation
+
+### Download Pre-built Binaries
+
+The easiest way to install Audio Extractor is to download the pre-built binaries from
+the [Releases page](https://github.com/nikbucher/audio-extractor/releases).
+
+1. Go to the [Releases page](https://github.com/nikbucher/audio-extractor/releases)
+2. Download the appropriate version for your operating system:
+   - **Windows**: `.msi` installer or `.exe` executable
+   - **macOS**: `.dmg` disk image (available for both Intel and Apple Silicon)
+   - **Linux**: `.AppImage`, `.deb`, or `.tar.gz` archive
+
+### Installing from GitHub Source
+
+If you prefer to build the application from source:
+
+1. **Prerequisites:**
+   - Install [Rust](https://www.rust-lang.org/tools/install)
+   - Install [Node.js](https://nodejs.org/) (LTS version recommended)
+   - Install FFmpeg (see below)
+
+2. **Clone the repository:**
+   ```sh
+   git clone https://github.com/nikbucher/audio-extractor.git
+   cd audio-extractor
+   ```
+
+3. **Install dependencies:**
+   ```sh
+   npm install
+   ```
+
+4. **Build the application:**
+   ```sh
+   npm run tauri build
+   ```
+
+5. **Find the built application:**
+   - The app will be built in the `src-tauri/target/release/bundle` directory
+   - Use the appropriate installer or executable for your platform
+
+## FFmpeg Installation
+
+Audio Extractor requires FFmpeg to be installed on your system:
+
+### macOS
+
+Install via [Homebrew](https://brew.sh/):
+
+```sh
+brew install ffmpeg
+```
+
+### Windows
+
+Download from [FFmpeg.org](https://ffmpeg.org/download.html), extract, and add the `bin` folder (containing `ffmpeg.exe`
+and `ffprobe.exe`) to your system `PATH`.
+
+### Linux
+
+Install via your package manager:
+
+```sh
+# Ubuntu/Debian
+sudo apt update
+sudo apt install ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
+
+# Arch Linux
+sudo pacman -S ffmpeg
+```
+
+Verify installation by running `ffmpeg -version` and `ffprobe -version` in your terminal or command prompt.
+
+**Note:** FFmpeg is licensed under the LGPL/GPL. When using this application, you are responsible for complying
+with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) for more information.
+
+## Development
+
+### Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
-## Getting Started (Windows & macOS)
+### Running in Development Mode
 
-1. **Install FFmpeg and FFprobe:**
-   - **macOS:** Install via [Homebrew](https://brew.sh/):
-     ```sh
-     brew install ffmpeg
-     ```
-   - **Windows:** Download from [FFmpeg.org](https://ffmpeg.org/download.html), extract, and add the `bin` folder (containing `ffmpeg.exe` and `ffprobe.exe`) to your system `PATH`.
-   - Verify installation by running `ffmpeg -version` and `ffprobe -version` in your terminal or command prompt.
-   - **Note:** FFmpeg is licensed under the LGPL/GPL. When using this application, you are responsible for complying
-     with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) for more information.
-
-2. **Run the App:**
-   - Using Cargo:
-     ```sh
-     cargo tauri dev
-     ```
+```sh
+cargo tauri dev
+```
 
 ## Building for Production
 
 1. **Build the App:**
-   - Using Cargo:
-     ```sh
-     cargo tauri build
-     ```
+   ```sh
+   cargo tauri build
+   ```
 
 2. **Distribute the App:**
    - The app will be built in the `src-tauri/target/release` directory.
    - For bundled applications (installers, DMG, etc.), check the `src-tauri/target/release/bundle` directory.
-   - You can distribute the app as a standalone executable or bundle it with an installer.
 
 ## Learning Resources
 
 If you're also interested in learning Rust and Tauri, here are some resources I found helpful:
 
 - [The Rust Programming Language Book](https://doc.rust-lang.org/book/)
-- [Tauri Documentation](https://tauri.app/v1/guides/)
+- [Tauri Documentation](https://tauri.app/start/)
 - [FFmpeg Documentation](https://ffmpeg.org/documentation.html)

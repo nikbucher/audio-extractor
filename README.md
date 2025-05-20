@@ -10,7 +10,7 @@ This project serves as my learning playground for:
 - Rust programming language fundamentals
 - Tauri framework for building cross-platform desktop applications
 - Integrating external tools (FFmpeg) with Rust
-- Cross-platform development for Windows and macOS
+- Cross-platform development for macOS, Windows and Linux.
 
 ## Features
 
@@ -20,8 +20,6 @@ This project serves as my learning playground for:
 - Simple and intuitive user interface
 
 ## Installation
-
-### Download Pre-built Binaries
 
 The easiest way to install Audio Extractor is to download the pre-built binaries from
 the [Releases page](https://github.com/nikbucher/audio-extractor/releases).
@@ -34,35 +32,6 @@ the [FFmpeg Installation](#ffmpeg-installation) section below.
    - **Windows**: `.msi` installer or `.exe` executable
    - **macOS**: `.dmg` disk image (available for both Intel and Apple Silicon)
    - **Linux**: `.AppImage`, `.deb`, or `.tar.gz` archive
-
-### Installing from GitHub Source
-
-If you prefer to build the application from source:
-
-1. **Prerequisites:**
-   - Install [Rust](https://www.rust-lang.org/tools/install)
-   - Install [Node.js](https://nodejs.org/) (LTS version recommended)
-   - Install FFmpeg (see below)
-
-2. **Clone the repository:**
-   ```sh
-   git clone https://github.com/nikbucher/audio-extractor.git
-   cd audio-extractor
-   ```
-
-3. **Install dependencies:**
-   ```sh
-   npm install
-   ```
-
-4. **Build the application:**
-   ```sh
-   npm run tauri build
-   ```
-
-5. **Find the built application:**
-   - The app will be built in the `src-tauri/target/release/bundle` directory
-   - Use the appropriate installer or executable for your platform
 
 ## FFmpeg Installation
 
@@ -109,6 +78,20 @@ Verify installation by running `ffmpeg -version` and `ffprobe -version` in your 
 with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) for more information.
 
 ## Development
+
+### Prerequisites
+
+- Install [Rust](https://www.rust-lang.org/tools/install)
+- Install [Node.js](https://nodejs.org/) (LTS version recommended)
+- Install FFmpeg (see [FFmpeg Installation](#ffmpeg-installation) section)
+
+### Getting Started
+
+1. **Clone the repository:**
+   ```sh
+   git clone https://github.com/nikbucher/audio-extractor.git
+   cd audio-extractor
+   ```
 
 ### Recommended IDE Setup
 

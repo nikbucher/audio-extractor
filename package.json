@@ -1,0 +1,13 @@
+{
+  "name": "audio-extractor",
+  "version": "0.1.0",
+  "description": "A simple Tauri app to extract audio from video files using FFmpeg.",
+  "author": "",
+  "license": "Unlicense",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.2.1"
+  }
+}

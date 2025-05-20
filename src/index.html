@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Audio Extractor</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <h2>🎬 Audio Extractor</h2>
+  <video id="preview" controls></video>
+  <div class="controls-container">
+    <button id="videoInput">Select Video</button>
+    <div class="field-group-bg">
+      <div class="field-group">
+        <input type="checkbox" id="extractWhole" name="extractWhole" class="field-input">
+        <label class="field-label" for="extractWhole">Extract whole audio</label>
+      </div>
+      <div class="field-group" id="start-group">
+        <label class="field-label" for="start">Start</label>
+        <input type="time" id="start" step="1" value="00:00:00" class="field-input">
+      </div>
+      <div class="field-group" id="end-group">
+        <label class="field-label" for="end">End</label>
+        <input type="time" id="end" step="1" value="00:00:00" class="field-input">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="format">Output format:</label>
+      <select id="format" class="field-input">
+        <option value="aac">AAC (.aac)</option>
+        <option value="mp3" selected>MP3 (.mp3)</option>
+        <option value="ogg">OGG (.ogg)</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="appendText">Append to filename:</label>
+      <input type="text" id="appendText" placeholder="Enter text..." class="field-input">
+    </div>
+    <button id="extract">🔊 Extract Audio</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,165 @@
+/* Base styles and variables */
+:root {
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --secondary-color: #f0f4f8;
+  --text-color: #222;
+  --text-light: #bbb;
+  --border-color: #bbb;
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --font-sans: system-ui, -apple-system, sans-serif;
+}
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f8f8fa;
+  color: var(--text-color);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5em;
+}
+
+h2 {
+  margin-bottom: 0.3em;
+}
+
+input[type="file"] {
+  margin-bottom: 0.5em;
+}
+
+video {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  margin: 1em 0 0.7em 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  background-color: #000;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+label {
+  margin-right: 0.3em;
+}
+
+input,
+select {
+  min-width: 0;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  border: 1px solid #b9c6d1;
+  font-size: 1rem;
+  background: #fafdff;
+  transition: border 0.2s;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+button {
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 0.2em;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+  box-shadow: 0 1.5px 5px rgba(59,130,246,0.06);
+  letter-spacing: 0.01em;
+}
+
+button:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 3px 10px rgba(59,130,246,0.11);
+}
+
+button:active {
+  background: #174ea6;
+}
+
+/* === Unified Field Group Styles (OO CSS approach) === */
+.field-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3em;
+  height: 2em;
+  width: 100%;
+  margin-bottom: 0.18em;
+}
+.field-label {
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 0;
+  margin-right: 0.3em;
+  white-space: nowrap;
+}
+.field-input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 1%;
+  padding: 0.13em 0.4em;
+  border-radius: 4px;
+  border: 1px solid #b9c6d1;
+  background: #fafdff;
+  box-sizing: border-box;
+  transition: border 0.2s;
+}
+.field-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+/* For grouped backgrounds like the extract-group */
+.field-group-bg {
+  margin-bottom: 0.1em;
+  display: flex;
+  flex-direction: row;
+  gap: 2em;
+}
+
+/* Controls container */
+.controls-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 0 auto;
+  padding: 0.7em 0.6em 0.8em 0.6em;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 1.5px 8px rgba(59,130,246,0.06), 0 1.5px 4px rgba(0,0,0,0.03);
+  gap: 0.6em;
+}

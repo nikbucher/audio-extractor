@@ -75,8 +75,14 @@ brew install ffmpeg
 
 ### Windows
 
-Download from [FFmpeg.org](https://ffmpeg.org/download.html), extract, and add the `bin` folder (containing `ffmpeg.exe`
-and `ffprobe.exe`) to your system `PATH`.
+1. Download FFmpeg from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+2. Extract the ZIP file and move the folder to a location like `C:\ffmpeg`
+3. Add FFmpeg to your system PATH:
+   - Open Start Menu and search for "Environment Variables"
+   - Click «Environment Variables» and find `Path` under System variables
+   - Add the path to the `bin` folder (e.g., `C:\ffmpeg\bin`)
+   - Click OK and restart any Command Prompt windows
+4. Verify by typing `ffmpeg -version` in Command Prompt
 
 ### Linux
 

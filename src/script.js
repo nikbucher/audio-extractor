@@ -1,8 +1,7 @@
-//import { open } from '@tauri-apps/plugin-dialog';
-// when using `"withGlobalTauri": true`, you may use
 const { open } = window.__TAURI__.dialog;
-const { convertFileSrc } = window.__TAURI__.core;
 const { invoke } = window.__TAURI__.core;
+
+const mediaServerPort = invoke("get_media_server_port");
 
 const videoInput = document.getElementById("videoInput");
 const video = document.getElementById("preview");
@@ -32,8 +31,8 @@ videoInput.addEventListener("click", async () => {
     });
     if (selected) {
       videoPath = selected;
-      // Convert the file path to a URL that can be used in the web context
-      video.src = convertFileSrc(videoPath);
+      const port = await mediaServerPort;
+      video.src = `http://127.0.0.1:${port}/video?path=${encodeURIComponent(videoPath)}`;
       console.log("Selected video:", videoPath);
       // Wait for metadata to load so we can get duration
       video.onloadedmetadata = () => {

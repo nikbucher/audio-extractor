@@ -1,6 +1,16 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod media_server;
+
 use std::path::Path;
 use std::process::Command;
+use std::sync::atomic::{AtomicU16, Ordering};
+
+static MEDIA_SERVER_PORT: AtomicU16 = AtomicU16::new(0);
+
+#[tauri::command]
+fn get_media_server_port() -> u16 {
+    MEDIA_SERVER_PORT.load(Ordering::Relaxed)
+}
 
 const ALLOWED_FORMATS: &[&str] = &["aac", "mp3", "ogg"];
 const ALLOWED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
@@ -169,7 +179,17 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![extract_audio_range, extract_whole_audio])
+        .setup(|_app| {
+            let port = media_server::start();
+            MEDIA_SERVER_PORT.store(port, Ordering::Relaxed);
+            println!("[setup] Media server started on port {}", port);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            extract_audio_range,
+            extract_whole_audio,
+            get_media_server_port
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

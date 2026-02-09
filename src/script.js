@@ -13,6 +13,7 @@ const formatSelect = document.getElementById("format");
 const appendTextInput = document.getElementById("appendText");
 const startGroup = document.getElementById("start-group");
 const endGroup = document.getElementById("end-group");
+const extractBtn = document.getElementById("extract");
 let videoPath = "";
 
 function secondsToHMS(seconds) {
@@ -58,7 +59,12 @@ extractWholeCheckbox.addEventListener("change", () => {
   endGroup.style.display = show ? "flex" : "none";
 });
 
-document.getElementById("extract").addEventListener("click", async () => {
+function setExtracting(busy) {
+  extractBtn.disabled = busy;
+  extractBtn.textContent = busy ? "Extracting..." : "\u{1F50A} Extract Audio";
+}
+
+extractBtn.addEventListener("click", async () => {
   if (!videoPath) {
     alert("Please select a video first.");
     return;
@@ -66,19 +72,15 @@ document.getElementById("extract").addEventListener("click", async () => {
 
   const extractWhole = extractWholeCheckbox.checked;
   const format = formatSelect.value;
-  const ext = format === "aac" ? "aac" : format;
   const append = appendTextInput.value || "";
-  // Extract base filename (without extension)
-  const baseName = videoPath.split(/[\\/]/).pop().replace(/\.[\w]+$/, "");
-  // Compose output filename with append text
-  const output = videoPath.replace(/([\\/])([^\\/]+)$/, `$1${baseName}${append ? "-" + append : ""}-audio.${ext}`);
 
+  setExtracting(true);
   try {
     if (extractWhole) {
       await invoke("extract_whole_audio", {
         path: videoPath,
-        output,
         format,
+        append,
       });
     } else {
       const start = startInput.value;
@@ -91,13 +93,15 @@ document.getElementById("extract").addEventListener("click", async () => {
         path: videoPath,
         start,
         end,
-        output,
         format,
+        append,
       });
     }
     alert("Audio extracted!");
   } catch (e) {
     alert("Extraction failed: " + e);
     console.error("Extraction error:", e);
+  } finally {
+    setExtracting(false);
   }
 });

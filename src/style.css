@@ -108,6 +108,12 @@ button:active {
   background: #174ea6;
 }
 
+button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* === Unified Field Group Styles (OO CSS approach) === */
 .field-group {
   display: flex;

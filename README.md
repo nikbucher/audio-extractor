@@ -114,6 +114,17 @@ cargo tauri dev
    - The app will be built in the `src-tauri/target/release` directory.
    - For bundled applications (installers, DMG, etc.), check the `src-tauri/target/release/bundle` directory.
 
+## Releasing
+
+To create a new release, push a version tag:
+
+```sh
+git tag -a v0.3.0 -m "v0.3.0"
+git push origin v0.3.0
+```
+
+This triggers the GitHub Actions release workflow, which automatically builds artifacts for all platforms and creates a GitHub release. The version in the artifact filenames is derived from the git tag.
+
 ## Learning Resources
 
 If you're also interested in learning Rust and Tauri, here are some resources I found helpful:

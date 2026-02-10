@@ -114,6 +114,11 @@ button:disabled {
   box-shadow: none;
 }
 
+button.extracting:hover {
+  background: #dc2626 !important;
+  cursor: pointer;
+}
+
 /* === Unified Field Group Styles (OO CSS approach) === */
 .field-group {
   display: flex;

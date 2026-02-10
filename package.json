@@ -8,6 +8,6 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/plugin-dialog": "^2.2.1"
+    "@tauri-apps/plugin-dialog": "^2.6.0"
   }
 }

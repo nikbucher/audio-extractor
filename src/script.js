@@ -1,5 +1,6 @@
 const { open } = window.__TAURI__.dialog;
 const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 
 const mediaServerPort = invoke("get_media_server_port");
 
@@ -14,6 +15,7 @@ const startGroup = document.getElementById("start-group");
 const endGroup = document.getElementById("end-group");
 const extractBtn = document.getElementById("extract");
 let videoPath = "";
+let extracting = false;
 
 function secondsToHMS(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -59,11 +61,34 @@ extractWholeCheckbox.addEventListener("change", () => {
 });
 
 function setExtracting(busy) {
-  extractBtn.disabled = busy;
-  extractBtn.textContent = busy ? "Extracting..." : "\u{1F50A} Extract Audio";
+  extracting = busy;
+  if (busy) {
+    extractBtn.textContent = "Extracting... 0%";
+    extractBtn.style.background = `linear-gradient(to right, var(--primary-color) 0%, #94a3b8 0%)`;
+    extractBtn.classList.add("extracting");
+  } else {
+    extractBtn.textContent = "\u{1F50A} Extract Audio";
+    extractBtn.style.background = "";
+    extractBtn.classList.remove("extracting");
+  }
 }
 
+function updateProgress(percent) {
+  const p = Math.round(percent);
+  extractBtn.textContent = `Extracting... ${p}%`;
+  extractBtn.style.background = `linear-gradient(to right, var(--primary-color) ${p}%, #94a3b8 ${p}%)`;
+}
+
+listen("extraction-progress", (event) => {
+  updateProgress(event.payload);
+});
+
 extractBtn.addEventListener("click", async () => {
+  if (extracting) {
+    invoke("cancel_extraction");
+    return;
+  }
+
   if (!videoPath) {
     alert("Please select a video first.");
     return;
@@ -98,8 +123,10 @@ extractBtn.addEventListener("click", async () => {
     }
     alert("Audio extracted!");
   } catch (e) {
-    alert("Extraction failed: " + e);
-    console.error("Extraction error:", e);
+    if (e !== "Cancelled") {
+      alert("Extraction failed: " + e);
+      console.error("Extraction error:", e);
+    }
   } finally {
     setExtracting(false);
   }

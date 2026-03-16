@@ -2,48 +2,51 @@
 
 [![Build](https://github.com/nikbucher/audio-snip/actions/workflows/build.yml/badge.svg)](https://github.com/nikbucher/audio-snip/actions/workflows/build.yml)
 
-A simple Tauri app to extract audio from video files using FFmpeg. This is a personal try-out project I created to learn
-Rust and Tauri development.
-
-## About This Project
-
-This project serves as my learning playground for:
-
-- Rust programming language fundamentals
-- Tauri framework for building cross-platform desktop applications
-- Integrating external tools (FFmpeg) with Rust
-- Cross-platform development for macOS, Windows and Linux.
+A cross-platform desktop app to extract audio from video files using FFmpeg, built with Tauri 2 and Rust.
 
 ## Features
 
-- Extract audio from video files using FFmpeg
-- Support for different audio formats (AAC, MP3, OGG)
+- Extract audio from video files (MP4, MOV, AVI, MKV, WebM)
+- Support for AAC, MP3, and OGG output formats
 - Extract entire audio track or specific time ranges
-- Simple and intuitive user interface
+- Waveform timeline with draggable range handles
+- In-app video preview
+- Async extraction with progress reporting and cancellation
+- Codec-aware optimization (stream copy when source matches target format)
 
 ![AudioSnip](docs/screenshot.png)
 
 ## Installation
 
-The easiest way to install AudioSnip is to download the pre-built binaries from
-the [Releases page](https://github.com/nikbucher/audio-snip/releases).
+### Homebrew (macOS)
+
+```sh
+brew install --cask nikbucher/tap/audio-snip
+```
+
+This automatically installs FFmpeg as a dependency.
+
+### Pre-built binaries
+
+Download the latest version for your platform from [GitHub Releases](https://github.com/nikbucher/audio-snip/releases):
+
+| Platform | Architecture  | Download                         |
+|----------|---------------|----------------------------------|
+| macOS    | Apple Silicon | `AudioSnip_x.y.z_aarch64.dmg`    |
+| macOS    | Intel         | `AudioSnip_x.y.z_x64.dmg`        |
+| Windows  | x64           | `.msi` installer or `.exe` setup |
+| Windows  | ARM64         | `.msi` installer or `.exe` setup |
+| Linux    | x64           | `.AppImage`, `.deb`, or `.rpm`   |
 
 **Note:** This application requires FFmpeg to be installed on your system. See
 the [FFmpeg Installation](#ffmpeg-installation) section below.
 
-1. Go to the [Releases page](https://github.com/nikbucher/audio-snip/releases)
-2. Download the appropriate version for your operating system:
-   - **Windows**: `.msi` installer or `.exe` executable
-   - **macOS**: `.dmg` disk image (available for both Intel and Apple Silicon)
-   - **Linux**: `.AppImage`, `.deb`, or `.tar.gz` archive
-
 ## FFmpeg Installation
 
-AudioSnip requires FFmpeg to be installed on your system:
+When installing via Homebrew cask, FFmpeg is included automatically. For pre-built binaries,
+install FFmpeg manually:
 
 ### macOS
-
-Install via [Homebrew](https://brew.sh/):
 
 ```sh
 brew install ffmpeg
@@ -54,10 +57,10 @@ brew install ffmpeg
 1. Download FFmpeg from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
 2. Extract the ZIP file and move the folder to a location like `C:\ffmpeg`
 3. Add FFmpeg to your system PATH:
-   - Open Start Menu and search for "Environment Variables"
-   - Click «Environment Variables» and find `Path` under System variables
-   - Add the path to the `bin` folder (e.g., `C:\ffmpeg\bin`)
-   - Click OK and restart any Command Prompt windows
+    - Open Start Menu and search for "Environment Variables"
+    - Click «Environment Variables» and find `Path` under System variables
+    - Add the path to the `bin` folder (e.g., `C:\ffmpeg\bin`)
+    - Click OK and restart any Command Prompt windows
 4. Verify by typing `ffmpeg -version` in Command Prompt
 
 ### Linux
@@ -91,19 +94,10 @@ with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) f
 
 ### Getting Started
 
-1. **Clone the repository:**
-   ```sh
-   git clone https://github.com/nikbucher/audio-snip.git
-   cd audio-snip
-   ```
-
-### Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-### Running in Development Mode
-
 ```sh
+git clone https://github.com/nikbucher/audio-snip.git
+cd audio-snip
+npm install
 cargo tauri dev
 ```
 
@@ -115,24 +109,26 @@ cargo tauri dev
    ```
 
 2. **Distribute the App:**
-   - The app will be built in the `src-tauri/target/release` directory.
-   - For bundled applications (installers, DMG, etc.), check the `src-tauri/target/release/bundle` directory.
+    - The app will be built in the `src-tauri/target/release` directory.
+    - For bundled applications (installers, DMG, etc.), check the `src-tauri/target/release/bundle` directory.
 
 ## Releasing
 
 To create a new release, push a version tag:
 
 ```sh
-git tag -a v0.3.0 -m "v0.3.0"
-git push origin v0.3.0
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 This triggers the GitHub Actions release workflow, which automatically builds artifacts for all platforms and creates a GitHub release. The version in the artifact filenames is derived from the git tag.
 
-## Learning Resources
+## Documentation
 
-If you're also interested in learning Rust and Tauri, here are some resources I found helpful:
+- [Changelog](CHANGELOG.md)
+- [Use case specifications](docs/use_cases/)
+- [Contributing](CONTRIBUTING.md)
 
-- [The Rust Programming Language Book](https://doc.rust-lang.org/book/)
-- [Tauri Documentation](https://tauri.app/start/)
-- [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
+## License
+
+[Unlicense](LICENSE)

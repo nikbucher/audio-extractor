@@ -1,0 +1,82 @@
+name: Update Homebrew Cask
+
+on:
+  workflow_run:
+    workflows: [ "Release" ]
+    types: [ completed ]
+
+jobs:
+  update-cask:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get release info and compute checksums
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          for arch in aarch64 x64; do
+            ASSET="AudioSnip_${VERSION}_${arch}.dmg"
+            SHA=$(gh release download "$TAG" --repo "${{ github.repository }}" --pattern "$ASSET" --output - | sha256sum | cut -d' ' -f1)
+            echo "sha_${arch}=$SHA" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: nikbucher/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_PAT }}
+
+      - name: Update cask
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          SHA_AARCH64: ${{ steps.release.outputs.sha_aarch64 }}
+          SHA_X64: ${{ steps.release.outputs.sha_x64 }}
+        run: |
+          cat > Casks/audio-snip.rb << RUBY
+          cask "audio-snip" do
+            version "$VERSION"
+
+            on_arm do
+              sha256 "$SHA_AARCH64"
+              url "https://github.com/nikbucher/audio-snip/releases/download/v#{version}/AudioSnip_#{version}_aarch64.dmg"
+            end
+
+            on_intel do
+              sha256 "$SHA_X64"
+              url "https://github.com/nikbucher/audio-snip/releases/download/v#{version}/AudioSnip_#{version}_x64.dmg"
+            end
+
+            name "AudioSnip"
+            desc "Extract audio from video files using FFmpeg"
+            homepage "https://github.com/nikbucher/audio-snip"
+
+            depends_on formula: "ffmpeg"
+
+            app "AudioSnip.app"
+
+            zap trash: [
+              "~/Library/Caches/ch.avoni.audio-snip",
+              "~/Library/Preferences/ch.avoni.audio-snip.plist",
+              "~/Library/Saved Application State/ch.avoni.audio-snip.savedState",
+              "~/Library/WebKit/ch.avoni.audio-snip",
+            ]
+          end
+          RUBY
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' Casks/audio-snip.rb
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/audio-snip.rb
+          git commit -m "feat: update audio-snip to ${{ steps.release.outputs.version }}"
+          git push

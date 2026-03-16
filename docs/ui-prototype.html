@@ -1,0 +1,358 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{max-width:820px;margin:0 auto;padding:1.5rem 1rem 3rem;font-family:var(--font-sans)}
+.btn{font-family:var(--font-sans);cursor:pointer;border-radius:var(--border-radius-md);font-size:14px;transition:opacity .12s,background .12s}
+.btn-primary{background:var(--color-text-primary);color:var(--color-background-primary);border:none;padding:10px 22px;font-weight:500}
+.btn-primary:hover{opacity:.8}
+.btn-ghost{background:none;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);padding:7px 14px}
+.btn-ghost:hover{background:var(--color-background-secondary)}
+
+#drop-zone{border:1.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:5rem 2rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s}
+#drop-zone:hover,#drop-zone.drag-over{background:var(--color-background-secondary);border-color:var(--color-border-primary)}
+.dz-icon{width:48px;height:48px;margin:0 auto 1.5rem;border-radius:var(--border-radius-lg);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center}
+.dz-title{font-size:18px;font-weight:500;margin-bottom:.4rem;color:var(--color-text-primary)}
+.dz-sub{font-size:14px;color:var(--color-text-secondary);margin-bottom:1.25rem}
+.dz-fmts{display:flex;gap:6px;justify-content:center;margin-top:1.25rem}
+.dz-badge{font-size:11px;font-family:var(--font-mono);padding:3px 9px;border-radius:4px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+
+#editor{display:none}
+.ed-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:1rem;margin-bottom:1.25rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+.file-badge{display:flex;align-items:center;gap:10px}
+.file-icon{width:36px;height:36px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.file-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.file-meta{font-size:12px;color:var(--color-text-secondary);font-family:var(--font-mono);margin-top:2px}
+
+.ed-main{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:1rem;margin-bottom:1rem}
+.video-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary)}
+.video-screen{background:#111;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.play-ring{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;transition:background .15s}
+.play-ring:hover{background:rgba(255,255,255,.24)}
+.vid-bar{padding:10px 12px;display:flex;align-items:center;gap:10px}
+.vid-ts{font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary);white-space:nowrap;min-width:38px}
+
+.ctrl-panel{display:flex;flex-direction:column;gap:10px}
+.panel-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+.plabel{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary);margin-bottom:10px}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tfield label{display:block;font-size:11px;color:var(--color-text-tertiary);margin-bottom:4px}
+.tfield input{width:100%;padding:8px 10px;font-family:var(--font-mono);font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary)}
+.tfield input:focus{outline:none;border-color:var(--color-border-primary);box-shadow:0 0 0 2px rgba(128,128,128,.1)}
+.whole-row{display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:2px;user-select:none}
+.chkbox{width:16px;height:16px;border:0.5px solid var(--color-border-secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;background:var(--color-background-secondary);flex-shrink:0;transition:background .1s,border-color .1s}
+.chkbox.on{background:var(--color-text-primary);border-color:var(--color-text-primary)}
+.whole-label{font-size:13px;color:var(--color-text-secondary)}
+.fmt-chips{display:flex;gap:6px}
+.fchip{flex:1;padding:8px 4px;text-align:center;font-family:var(--font-mono);font-size:13px;font-weight:500;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;color:var(--color-text-secondary);background:var(--color-background-primary);transition:all .1s;user-select:none}
+.fchip:hover{background:var(--color-background-secondary)}
+.fchip.on{border-color:var(--color-text-primary);color:var(--color-text-primary);background:var(--color-background-secondary)}
+.btn-xtr{width:100%;padding:11px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:var(--border-radius-md);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .12s}
+.btn-xtr:hover{opacity:.8}
+.btn-xtr:active{opacity:.6;transform:scale(.99)}
+
+.wf-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem;margin-bottom:1rem}
+.wf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.wf-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary)}
+.wf-sel-info{font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary)}
+.wf-wrap{position:relative;height:72px;user-select:none}
+#wf-canvas{width:100%;height:72px;display:block;border-radius:4px;cursor:crosshair}
+.wf-handle{position:absolute;top:0;bottom:0;width:2px;background:var(--color-text-primary);cursor:ew-resize;z-index:5;touch-action:none}
+.wf-handle::before,.wf-handle::after{content:'';position:absolute;left:50%;transform:translateX(-50%);width:10px;height:10px;background:var(--color-text-primary);border-radius:50%}
+.wf-handle::before{top:-5px}
+.wf-handle::after{bottom:-5px}
+.wf-playhead{position:absolute;top:0;bottom:0;width:1px;background:rgba(128,128,128,.45);z-index:4;pointer-events:none}
+.wf-times{display:flex;justify-content:space-between;margin-top:6px}
+.wf-t{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary)}
+
+.clips-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.clips-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.clips-cnt{font-size:12px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:20px;padding:2px 9px;color:var(--color-text-secondary)}
+.clip-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);margin-bottom:8px;background:var(--color-background-primary);transition:border-color 1.2s}
+.clip-item.fresh{border-color:var(--color-border-success)}
+.clip-num{width:28px;height:28px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--color-text-secondary);flex-shrink:0}
+.clip-info{flex:1;min-width:0}
+.clip-range{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.clip-src{font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip-fmt{font-family:var(--font-mono);font-size:11px;padding:2px 8px;border-radius:4px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);flex-shrink:0}
+.clip-del{background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--color-text-secondary);opacity:.4;font-size:17px;line-height:1;transition:opacity .1s}
+.clip-del:hover{opacity:1}
+.clips-empty{text-align:center;padding:2rem;color:var(--color-text-secondary);font-size:14px;border:1.5px dashed var(--color-border-tertiary);border-radius:var(--border-radius-lg)}
+</style>
+
+<div class="wrap">
+<input type="file" id="file-input" accept="video/*" style="display:none" onchange="fileChosen(this)">
+
+<div id="drop-zone" onclick="document.getElementById('file-input').click()">
+  <div class="dz-icon">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-secondary)"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+  </div>
+  <p class="dz-title">Drop a video file here</p>
+  <p class="dz-sub">MP4, MOV, MKV, AVI, WebM and more</p>
+  <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('file-input').click()">Browse files</button>
+  <div class="dz-fmts">
+    <span class="dz-badge">AAC</span><span class="dz-badge">MP3</span><span class="dz-badge">OGG</span>
+  </div>
+</div>
+
+<div id="editor">
+  <div class="ed-head">
+    <div class="file-badge">
+      <div class="file-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-secondary)"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div>
+        <div class="file-name" id="fn">Interview_Final_Cut.mp4</div>
+        <div class="file-meta" id="fm">1.4 GB · 58:23</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost" onclick="loadNew()">Load different file</button>
+  </div>
+
+  <div class="ed-main">
+    <div class="video-card">
+      <div class="video-screen" onclick="togglePlay()">
+        <div class="play-ring" id="play-ring">
+          <svg id="ico-play" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21"/></svg>
+          <svg id="ico-pause" width="20" height="20" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="5" y="4" width="4" height="16"/><rect x="15" y="4" width="4" height="16"/></svg>
+        </div>
+      </div>
+      <div class="vid-bar">
+        <span class="vid-ts" id="vid-ts">0:00</span>
+        <input type="range" min="0" max="3503" value="0" id="vid-scrub" style="flex:1" oninput="scrub(this.value)">
+        <span class="vid-ts">58:23</span>
+      </div>
+    </div>
+
+    <div class="ctrl-panel">
+      <div class="panel-card">
+        <div class="plabel">Time range</div>
+        <div class="time-row" id="time-row">
+          <div class="tfield"><label>Start</label><input type="text" id="t-start" value="0:00" onchange="timeChanged()"></div>
+          <div class="tfield"><label>End</label><input type="text" id="t-end" value="58:23" onchange="timeChanged()"></div>
+        </div>
+        <div class="whole-row" onclick="toggleWhole()">
+          <div class="chkbox" id="chkbox">
+            <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 3.5,6.5 9,1" stroke="var(--color-background-primary)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="whole-label">Extract whole audio</span>
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="plabel">Output format</div>
+        <div class="fmt-chips">
+          <div class="fchip" data-f="AAC" onclick="setFmt('AAC')">AAC</div>
+          <div class="fchip on" data-f="MP3" onclick="setFmt('MP3')">MP3</div>
+          <div class="fchip" data-f="OGG" onclick="setFmt('OGG')">OGG</div>
+        </div>
+      </div>
+      <button class="btn-xtr" onclick="extract()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M12 2v10M7 7l5 5 5-5"/><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/></svg>
+        Extract audio
+      </button>
+    </div>
+  </div>
+
+  <div class="wf-card">
+    <div class="wf-head">
+      <span class="wf-label">Timeline</span>
+      <span class="wf-sel-info" id="wf-info">0:00 → 58:23</span>
+    </div>
+    <div class="wf-wrap" id="wf-wrap">
+      <canvas id="wf-canvas"></canvas>
+      <div class="wf-handle" id="h-start" style="left:0%"></div>
+      <div class="wf-handle" id="h-end" style="left:100%"></div>
+      <div class="wf-playhead" id="playhead" style="left:0%"></div>
+    </div>
+    <div class="wf-times">
+      <span class="wf-t">0:00</span><span class="wf-t">14:36</span><span class="wf-t">29:12</span><span class="wf-t">43:48</span><span class="wf-t">58:23</span>
+    </div>
+  </div>
+
+  <div class="clips-head">
+    <span class="clips-title">Queued clips</span>
+    <span class="clips-cnt" id="clips-cnt">0 clips</span>
+  </div>
+  <div id="clips-list">
+    <div class="clips-empty">No clips yet — set a time range and click Extract.</div>
+  </div>
+</div>
+</div>
+
+<script>
+const TOTAL=3503;
+let sp=0,ep=1,whole=false,fmt='MP3',clips=[],playing=false,playPos=0,timer=null,fname='Interview_Final_Cut.mp4',dragInitDone=false;
+
+const wave=(()=>{const d=[];for(let i=0;i<240;i++){const t=i/240;d.push(Math.max(.08,Math.min(1,Math.abs(Math.sin(t*Math.PI*11.3)*.38+Math.sin(t*Math.PI*27.7)*.22+Math.sin(t*Math.PI*5.1)*.18+Math.sin(t*Math.PI*43.9)*.1+.12))));}return d;})();
+
+function tf(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return h>0?`${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`:`${m}:${String(sc).padStart(2,'0')}`;}
+function pt(s){const p=s.trim().split(':').map(Number);return p.length===3?p[0]*3600+p[1]*60+p[2]:p.length===2?p[0]*60+p[1]:0;}
+
+function drawWave(){
+  const cv=document.getElementById('wf-canvas'),wrap=document.getElementById('wf-wrap');
+  if(!cv||!wrap)return;
+  const W=wrap.offsetWidth,H=72,dpr=devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const dark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const inactive=dark?'rgba(255,255,255,.14)':'rgba(0,0,0,.11)';
+  const x1=whole?0:sp*W,x2=whole?W:ep*W;
+  ctx.fillStyle='rgba(186,117,23,.1)';ctx.fillRect(x1,0,x2-x1,H);
+  const n=wave.length,bw=Math.max(1.5,W/n*.56);
+  for(let i=0;i<n;i++){
+    const x=(i/n)*W+(W/n*.5),p=i/n,inS=whole||(p>=sp&&p<=ep);
+    const bh=wave[i]*H*.82;
+    ctx.fillStyle=inS?'#BA7517':inactive;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(x-bw/2,(H-bh)/2,bw,bh,1);
+    else ctx.rect(x-bw/2,(H-bh)/2,bw,bh);
+    ctx.fill();
+  }
+}
+
+function updHandles(){
+  const hs=document.getElementById('h-start'),he=document.getElementById('h-end');
+  if(!hs)return;
+  hs.style.left=(sp*100).toFixed(2)+'%';
+  he.style.left=(ep*100).toFixed(2)+'%';
+  hs.style.display=whole?'none':'';
+  he.style.display=whole?'none':'';
+}
+
+function updInputs(){
+  const s=whole?0:Math.round(sp*TOTAL),e=whole?TOTAL:Math.round(ep*TOTAL);
+  document.getElementById('t-start').value=tf(s);
+  document.getElementById('t-end').value=tf(e);
+  document.getElementById('wf-info').textContent=tf(s)+' → '+tf(e);
+  const tr=document.getElementById('time-row');
+  tr.style.opacity=whole?'.4':'1';tr.style.pointerEvents=whole?'none':'';
+}
+
+function refresh(){drawWave();updHandles();updInputs();}
+
+function initDrag(){
+  if(dragInitDone)return;dragInitDone=true;
+  const wrap=document.getElementById('wf-wrap'),hs=document.getElementById('h-start'),he=document.getElementById('h-end');
+  let dg=null;
+  function mv(cx){
+    if(!dg)return;
+    const r=wrap.getBoundingClientRect(),p=Math.max(0,Math.min(1,(cx-r.left)/r.width));
+    if(dg==='s')sp=Math.min(p,ep-.005);else ep=Math.max(p,sp+.005);
+    refresh();
+  }
+  hs.addEventListener('mousedown',e=>{dg='s';e.preventDefault();});
+  he.addEventListener('mousedown',e=>{dg='e';e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(dg)mv(e.clientX);});
+  document.addEventListener('mouseup',()=>{dg=null;});
+  hs.addEventListener('touchstart',e=>{dg='s';e.preventDefault();},{passive:false});
+  he.addEventListener('touchstart',e=>{dg='e';e.preventDefault();},{passive:false});
+  document.addEventListener('touchmove',e=>{if(dg)mv(e.touches[0].clientX);},{passive:false});
+  document.addEventListener('touchend',()=>{dg=null;});
+  document.getElementById('wf-canvas').addEventListener('click',e=>{
+    const r=wrap.getBoundingClientRect();
+    playPos=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    document.getElementById('playhead').style.left=(playPos*100).toFixed(2)+'%';
+    const v=Math.round(playPos*TOTAL);
+    document.getElementById('vid-scrub').value=v;
+    document.getElementById('vid-ts').textContent=tf(v);
+  });
+}
+
+function showEditor(){
+  document.getElementById('drop-zone').style.display='none';
+  document.getElementById('editor').style.display='';
+  sp=0;ep=1;
+  setTimeout(()=>{initDrag();refresh();},30);
+}
+
+function fileChosen(inp){
+  if(inp.files[0]){
+    fname=inp.files[0].name;
+    document.getElementById('fn').textContent=fname;
+    const mb=(inp.files[0].size/1048576).toFixed(0);
+    document.getElementById('fm').textContent=mb+' MB · 58:23';
+    showEditor();
+  }
+}
+
+function loadNew(){
+  document.getElementById('editor').style.display='none';
+  document.getElementById('drop-zone').style.display='';
+  clips=[];renderClips();
+  if(playing){clearInterval(timer);playing=false;}
+}
+
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f){fname=f.name;document.getElementById('fn').textContent=fname;showEditor();}
+});
+
+function toggleWhole(){
+  whole=!whole;
+  const c=document.getElementById('chkbox');
+  if(whole)c.classList.add('on');else c.classList.remove('on');
+  refresh();
+}
+
+function setFmt(f){
+  fmt=f;
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));
+}
+
+function timeChanged(){
+  const s=pt(document.getElementById('t-start').value),e=pt(document.getElementById('t-end').value);
+  sp=Math.max(0,Math.min(1,s/TOTAL));ep=Math.max(0,Math.min(1,e/TOTAL));
+  if(ep<=sp)ep=Math.min(1,sp+.005);
+  drawWave();updHandles();
+  document.getElementById('wf-info').textContent=tf(sp*TOTAL)+' → '+tf(ep*TOTAL);
+}
+
+function extract(){
+  const s=whole?0:Math.round(sp*TOTAL),e=whole?TOTAL:Math.round(ep*TOTAL);
+  if(e<=s)return;
+  clips.unshift({id:Date.now(),s,e,fmt});renderClips();
+}
+
+function renderClips(){
+  const list=document.getElementById('clips-list');
+  document.getElementById('clips-cnt').textContent=clips.length+' clip'+(clips.length!==1?'s':'');
+  if(!clips.length){list.innerHTML='<div class="clips-empty">No clips yet — set a time range and click Extract.</div>';return;}
+  list.innerHTML=clips.map((c,i)=>`<div class="clip-item${i===0?' fresh':''}" id="c${c.id}">
+    <div class="clip-num">${clips.length-i}</div>
+    <div class="clip-info"><div class="clip-range">${tf(c.s)} → ${tf(c.e)}</div><div class="clip-src">${tf(c.e-c.s)} · ${fname}</div></div>
+    <span class="clip-fmt">${c.fmt}</span>
+    <button class="clip-del" onclick="delClip(${c.id})">×</button>
+  </div>`).join('');
+  if(clips.length)setTimeout(()=>{const el=document.getElementById('c'+clips[0].id);if(el)el.classList.remove('fresh');},1600);
+}
+
+function delClip(id){clips=clips.filter(c=>c.id!==id);renderClips();}
+
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('ico-play').style.display=playing?'none':'';
+  document.getElementById('ico-pause').style.display=playing?'':'none';
+  if(playing){
+    timer=setInterval(()=>{
+      playPos=Math.min(1,playPos+1/TOTAL);
+      const v=Math.round(playPos*TOTAL);
+      document.getElementById('playhead').style.left=(playPos*100).toFixed(2)+'%';
+      document.getElementById('vid-scrub').value=v;
+      document.getElementById('vid-ts').textContent=tf(v);
+      if(playPos>=1){playing=false;clearInterval(timer);document.getElementById('ico-play').style.display='';document.getElementById('ico-pause').style.display='none';}
+    },1000);
+  }else clearInterval(timer);
+}
+
+function scrub(v){
+  playPos=v/TOTAL;
+  document.getElementById('vid-ts').textContent=tf(v);
+  document.getElementById('playhead').style.left=(playPos*100).toFixed(2)+'%';
+}
+
+window.addEventListener('resize',()=>{if(document.getElementById('editor').style.display!=='none')drawWave();});
+</script>

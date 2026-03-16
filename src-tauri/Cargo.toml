@@ -1,6 +1,6 @@
 [package]
 name = "audio-snip"
-version = "0.4.1"
+version = "0.4.2"
 description = "A simple Tauri app to extract audio from video files using FFmpeg"
 edition = "2024"
 license = "MIT"

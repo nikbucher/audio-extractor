@@ -45,6 +45,16 @@ fn uc002_normalize_plain_date_from() { ... }
 
 Omit the doc comment only if the use case mapping is already fully expressed by the test name.
 
+## Releasing
+
+1. Update version in `src-tauri/Cargo.toml` (single source of truth) and `CHANGELOG.md`
+2. Commit: `chore: release vX.Y.Z`
+3. Tag and push:
+   ```sh
+   git tag -a vX.Y.Z -m "vX.Y.Z"
+   git push origin main vX.Y.Z
+   ```
+
 ## CI Checks
 
 Make sure CI passes before submitting:

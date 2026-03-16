@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AudioSnip",
-  "version": "0.4.1",
   "identifier": "ch.avoni.audio-snip",
   "build": {
     "frontendDist": "../src"

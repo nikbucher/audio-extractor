@@ -10,8 +10,6 @@ on:
 
 jobs:
   build:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -58,23 +56,9 @@ jobs:
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: npm install
 
-      - name: Build Tauri App (non-main branches)
-        if: github.ref != 'refs/heads/main'
+      - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: ${{ matrix.args }}
-
-      - name: Build and Publish Snapshot (main branch only)
-        if: github.ref == 'refs/heads/main'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: snapshot-${{ github.sha }}
-          releaseName: 'Snapshot Build ${{ github.sha }}'
-          releaseBody: 'Automated snapshot build from the main branch.'
-          releaseDraft: true
-          prerelease: false
           args: ${{ matrix.args }}

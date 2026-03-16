@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-16
+
 ### Added
 
 - Windows ARM (aarch64) build target and Linux RPM packaging
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Renamed app from "Audio Extractor" to "AudioSnip"
 - Reworked UI with waveform timeline and draggable range handles
 - New custom app icons
 - Introduced `AppError` enum for unified error handling
@@ -51,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Time range selection for partial extraction
 - Cross-platform builds for macOS, Windows, and Linux
 
-[Unreleased]: https://github.com/nikbucher/audio-snip/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/nikbucher/audio-snip/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/nikbucher/audio-snip/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nikbucher/audio-snip/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nikbucher/audio-snip/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nikbucher/audio-snip/releases/tag/v0.1.0

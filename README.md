@@ -135,4 +135,4 @@ This triggers the GitHub Actions release workflow, which automatically builds ar
 
 ## License
 
-[Unlicense](LICENSE)
+[MIT](LICENSE)

@@ -159,7 +159,7 @@ fn codec_for_format(format: &str, source_codec: Option<&str>) -> &'static str {
 			_ => "aac",
 		},
 		"mp3" => "libmp3lame",
-		"ogg" => "libvorbis",
+		"ogg" => "libopus",
 		_ => "copy",
 	}
 }
@@ -623,8 +623,8 @@ mod tests {
 
 	#[test]
 	fn uc003_codec_for_format_ogg() {
-		assert_eq!(codec_for_format("ogg", None), "libvorbis");
-		assert_eq!(codec_for_format("ogg", Some("aac")), "libvorbis");
+		assert_eq!(codec_for_format("ogg", None), "libopus");
+		assert_eq!(codec_for_format("ogg", Some("aac")), "libopus");
 	}
 
 	// UC-004 | BR-007: Partial File Cleanup

@@ -41,6 +41,12 @@ Download the latest version for your platform from [GitHub Releases](https://git
 **Note:** This application requires FFmpeg to be installed on your system. See
 the [FFmpeg Installation](#ffmpeg-installation) section below.
 
+**macOS:** The app is not notarized. After installing from a `.dmg`, remove the quarantine flag:
+
+```sh
+xattr -d com.apple.quarantine /Applications/AudioSnip.app
+```
+
 ## FFmpeg Installation
 
 When installing via Homebrew cask, FFmpeg is included automatically. For pre-built binaries,

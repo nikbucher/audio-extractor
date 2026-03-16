@@ -29,6 +29,11 @@ fn content_type_for(ext: &str) -> &'static str {
 }
 
 async fn serve_video(Query(query): Query<FileQuery>, headers: HeaderMap) -> Result<Response, StatusCode> {
+	// Only serve files that the app has explicitly registered
+	if !crate::is_path_registered(&query.path) {
+		return Err(StatusCode::FORBIDDEN);
+	}
+
 	let file_path = Path::new(&query.path);
 	let ext = file_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
 	if !ALLOWED_EXTENSIONS.contains(&ext.as_str()) {

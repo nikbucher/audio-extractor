@@ -120,7 +120,8 @@ async function loadVideo(path) {
 		return;
 	}
 
-	// Set video source via media server
+	// Register path with media server allowlist, then set video source
+	await invoke("register_media_path", { path: videoPath });
 	video.src = `http://127.0.0.1:${mediaServerPort}/video?path=${encodeURIComponent(videoPath)}`;
 
 	// Reset state

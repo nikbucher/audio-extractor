@@ -1,8 +1,10 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod media_server;
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::process::Stdio;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
@@ -10,10 +12,24 @@ use tokio::process::Command;
 
 static MEDIA_SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
+static ALLOWED_PATHS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
 #[tauri::command]
 fn get_media_server_port() -> u16 {
 	MEDIA_SERVER_PORT.load(Ordering::Relaxed)
+}
+
+/// Register a file path so the media server is allowed to serve it.
+#[tauri::command]
+fn register_media_path(path: String) {
+	let mut guard = ALLOWED_PATHS.lock().unwrap();
+	guard.get_or_insert_with(HashSet::new).insert(path);
+}
+
+/// Check whether a path has been registered for media serving.
+pub fn is_path_registered(path: &str) -> bool {
+	let guard = ALLOWED_PATHS.lock().unwrap();
+	guard.as_ref().is_some_and(|set| set.contains(path))
 }
 
 #[tauri::command]
@@ -262,7 +278,10 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 	CANCEL_FLAG.store(false, Ordering::Relaxed);
 	println!("[extract_audio_range] path={}, start={}, end={}, output={}", path, start, end, output);
 
-	let args = vec!["-y", "-i", &path, "-ss", &start, "-to", &end, "-vn", "-c:a", acodec, "-progress", "pipe:1", &output];
+	// Place -ss before -i for fast input seeking; use -t (duration) since
+	// -to is relative to the input start when -ss precedes -i.
+	let duration_str = format!("{:.3}", duration_secs);
+	let args = vec!["-y", "-ss", &start, "-i", &path, "-t", &duration_str, "-vn", "-c:a", acodec, "-progress", "pipe:1", &output];
 
 	run_ffmpeg_command(&args, duration_secs, &output, &app).await
 }
@@ -307,10 +326,11 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 			}
 			if let Some(time_us_str) = line.strip_prefix("out_time_us=")
 				&& duration_secs > 0.0
-					&& let Ok(time_us) = time_us_str.parse::<f64>() {
-						let progress = ((time_us / 1_000_000.0) / duration_secs * 100.0).min(100.0);
-						let _ = app.emit("extraction-progress", progress);
-					}
+				&& let Ok(time_us) = time_us_str.parse::<f64>()
+			{
+				let progress = ((time_us / 1_000_000.0) / duration_secs * 100.0).min(100.0);
+				let _ = app.emit("extraction-progress", progress);
+			}
 		}
 	}
 
@@ -350,6 +370,7 @@ pub fn run() {
 			extract_whole_audio,
 			cancel_extraction,
 			get_media_server_port,
+			register_media_path,
 			get_video_metadata,
 			get_audio_waveform,
 		])

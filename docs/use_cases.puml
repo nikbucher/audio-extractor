@@ -3,7 +3,7 @@ left to right direction
 
 actor "User" as user
 
-rectangle "Audio Extractor" {
+rectangle "AudioSnip" {
     usecase "UC-001\nSelect Video File" as UC001
     usecase "UC-002\nPreview Selected Range" as UC002
     usecase "UC-003\nExtract Audio" as UC003

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "audio-extractor",
+  "productName": "AudioSnip",
   "version": "0.1.0",
-  "identifier": "ch.avoni.audio-extractor",
+  "identifier": "ch.avoni.audio-snip",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "audio-extractor",
+        "title": "AudioSnip",
         "width": 860,
         "height": 700
       }

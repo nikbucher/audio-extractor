@@ -1,6 +1,6 @@
-# Audio Extractor
+# AudioSnip
 
-[![Build](https://github.com/nikbucher/audio-extractor/actions/workflows/build.yml/badge.svg)](https://github.com/nikbucher/audio-extractor/actions/workflows/build.yml)
+[![Build](https://github.com/nikbucher/audio-snip/actions/workflows/build.yml/badge.svg)](https://github.com/nikbucher/audio-snip/actions/workflows/build.yml)
 
 A simple Tauri app to extract audio from video files using FFmpeg. This is a personal try-out project I created to learn
 Rust and Tauri development.
@@ -21,17 +21,17 @@ This project serves as my learning playground for:
 - Extract entire audio track or specific time ranges
 - Simple and intuitive user interface
 
-![Audio Extractor](docs/screenshot.png)
+![AudioSnip](docs/screenshot.png)
 
 ## Installation
 
-The easiest way to install Audio Extractor is to download the pre-built binaries from
-the [Releases page](https://github.com/nikbucher/audio-extractor/releases).
+The easiest way to install AudioSnip is to download the pre-built binaries from
+the [Releases page](https://github.com/nikbucher/audio-snip/releases).
 
 **Note:** This application requires FFmpeg to be installed on your system. See
 the [FFmpeg Installation](#ffmpeg-installation) section below.
 
-1. Go to the [Releases page](https://github.com/nikbucher/audio-extractor/releases)
+1. Go to the [Releases page](https://github.com/nikbucher/audio-snip/releases)
 2. Download the appropriate version for your operating system:
    - **Windows**: `.msi` installer or `.exe` executable
    - **macOS**: `.dmg` disk image (available for both Intel and Apple Silicon)
@@ -39,7 +39,7 @@ the [FFmpeg Installation](#ffmpeg-installation) section below.
 
 ## FFmpeg Installation
 
-Audio Extractor requires FFmpeg to be installed on your system:
+AudioSnip requires FFmpeg to be installed on your system:
 
 ### macOS
 
@@ -93,8 +93,8 @@ with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) f
 
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/nikbucher/audio-extractor.git
-   cd audio-extractor
+   git clone https://github.com/nikbucher/audio-snip.git
+   cd audio-snip
    ```
 
 ### Recommended IDE Setup

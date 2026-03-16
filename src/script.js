@@ -1,4 +1,4 @@
-// Audio Extractor — Tauri frontend
+// AudioSnip — Tauri frontend
 // Implements UC-001 through UC-004
 
 const { open } = window.__TAURI__.dialog;

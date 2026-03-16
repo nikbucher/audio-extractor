@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/nikbucher/audio-extractor).
+Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/nikbucher/audio-snip).
 
 ## Development Methodology
 

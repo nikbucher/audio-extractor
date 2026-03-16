@@ -1,4 +1,4 @@
-# Vision: Audio Extractor
+# Vision: AudioSnip
 
 ## Goal
 

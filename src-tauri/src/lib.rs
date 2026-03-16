@@ -4,8 +4,8 @@ mod media_server;
 use std::collections::HashSet;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
+use std::sync::{Mutex, OnceLock};
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
@@ -34,12 +34,12 @@ pub fn is_path_registered(path: &str) -> bool {
 
 #[tauri::command]
 fn cancel_extraction() {
-	CANCEL_FLAG.store(true, Ordering::Relaxed);
+	CANCEL_FLAG.store(true, Ordering::Release);
 	println!("[cancel] Extraction cancel requested");
 }
 
 const ALLOWED_FORMATS: &[&str] = &["aac", "mp3", "ogg"];
-const ALLOWED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
+pub const ALLOWED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
 const WAVEFORM_BINS: usize = 240;
 
 /// Find a command binary by checking common installation paths.
@@ -62,6 +62,16 @@ fn find_command(name: &str) -> String {
 	}
 
 	name.to_string()
+}
+
+fn ffmpeg_path() -> &'static str {
+	static PATH: OnceLock<String> = OnceLock::new();
+	PATH.get_or_init(|| find_command("ffmpeg"))
+}
+
+fn ffprobe_path() -> &'static str {
+	static PATH: OnceLock<String> = OnceLock::new();
+	PATH.get_or_init(|| find_command("ffprobe"))
 }
 
 fn validate_extension(ext: &str) -> bool {
@@ -140,7 +150,7 @@ fn build_output_path(path: &str, format: &str, append: &str) -> Result<String, S
 }
 
 async fn get_audio_codec(path: &str) -> Option<String> {
-	let output = Command::new(find_command("ffprobe"))
+	let output = Command::new(ffprobe_path())
 		.args([
 			"-v",
 			"error",
@@ -169,7 +179,7 @@ async fn get_audio_codec(path: &str) -> Option<String> {
 }
 
 async fn get_duration(path: &str) -> Option<f64> {
-	let output = Command::new(find_command("ffprobe"))
+	let output = Command::new(ffprobe_path())
 		.args(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path])
 		.output()
 		.await;
@@ -210,45 +220,85 @@ async fn get_video_metadata(path: String) -> Result<VideoMetadata, String> {
 async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
 	validate_path(&path)?;
 
-	let mut child = Command::new(find_command("ffmpeg"))
+	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
+	if duration_secs <= 0.0 {
+		return Ok(vec![0.0; WAVEFORM_BINS]);
+	}
+
+	// At 8 kHz mono s16le, total samples = duration * 8000.
+	// Compute samples_per_bin so we can stream bin-by-bin.
+	let total_samples = (duration_secs * 8000.0) as usize;
+	let samples_per_bin = (total_samples / WAVEFORM_BINS).max(1);
+
+	let mut child = Command::new(ffmpeg_path())
 		.args(["-i", &path, "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "pipe:1"])
 		.stdout(Stdio::piped())
 		.stderr(Stdio::null())
 		.spawn()
 		.map_err(|e| format!("FFmpeg failed: {}. Is FFmpeg installed?", e))?;
 
-	let mut raw_bytes = Vec::new();
-	if let Some(mut stdout) = child.stdout.take() {
-		stdout.read_to_end(&mut raw_bytes).await.map_err(|e| format!("Failed to read FFmpeg output: {}", e))?;
-	}
-
-	let status = child.wait().await.map_err(|e| format!("FFmpeg failed: {}", e))?;
-	if !status.success() {
-		return Err("FFmpeg failed to extract audio data".to_string());
-	}
-
-	// Convert raw bytes to i16 samples (little-endian)
-	let samples: Vec<i16> = raw_bytes.chunks_exact(2).map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]])).collect();
-
-	if samples.is_empty() {
-		return Ok(vec![0.0; WAVEFORM_BINS]);
-	}
-
-	// Bin samples and take absolute peak per bin
-	let bin_size = samples.len() / WAVEFORM_BINS;
-	let bin_size = bin_size.max(1);
 	let mut peaks: Vec<f32> = Vec::with_capacity(WAVEFORM_BINS);
+	let mut current_peak: u16 = 0;
+	let mut samples_in_bin: usize = 0;
 
-	for i in 0..WAVEFORM_BINS {
-		let start = i * bin_size;
-		let end = ((i + 1) * bin_size).min(samples.len());
-		if start >= samples.len() {
-			peaks.push(0.0);
-		} else {
-			let peak = samples[start..end].iter().map(|s| s.unsigned_abs()).max().unwrap_or(0);
-			peaks.push(peak as f32);
+	if let Some(stdout) = child.stdout.take() {
+		// Read in fixed-size chunks to avoid buffering the entire stream.
+		let mut reader = BufReader::with_capacity(16 * 1024, stdout);
+		let mut buf = [0u8; 8192];
+		let mut leftover: Option<u8> = None;
+
+		loop {
+			let n = reader.read(&mut buf).await.map_err(|e| format!("Failed to read FFmpeg output: {}", e))?;
+			if n == 0 {
+				break;
+			}
+
+			let mut slice = &buf[..n];
+
+			// If we had a leftover byte from the previous read, combine it
+			if let Some(lo) = leftover.take()
+				&& !slice.is_empty()
+			{
+				let sample = i16::from_le_bytes([lo, slice[0]]);
+				current_peak = current_peak.max(sample.unsigned_abs());
+				samples_in_bin += 1;
+				if samples_in_bin >= samples_per_bin && peaks.len() < WAVEFORM_BINS {
+					peaks.push(current_peak as f32);
+					current_peak = 0;
+					samples_in_bin = 0;
+				}
+				slice = &slice[1..];
+			}
+
+			// Process pairs of bytes as i16 samples
+			let pairs = slice.len() / 2;
+			for i in 0..pairs {
+				let sample = i16::from_le_bytes([slice[i * 2], slice[i * 2 + 1]]);
+				current_peak = current_peak.max(sample.unsigned_abs());
+				samples_in_bin += 1;
+				if samples_in_bin >= samples_per_bin && peaks.len() < WAVEFORM_BINS {
+					peaks.push(current_peak as f32);
+					current_peak = 0;
+					samples_in_bin = 0;
+				}
+			}
+
+			// Save leftover byte if odd number of bytes
+			if slice.len() % 2 != 0 {
+				leftover = Some(slice[slice.len() - 1]);
+			}
 		}
 	}
+
+	// Flush last partial bin
+	if samples_in_bin > 0 && peaks.len() < WAVEFORM_BINS {
+		peaks.push(current_peak as f32);
+	}
+
+	// Pad to WAVEFORM_BINS if stream was shorter than expected
+	peaks.resize(WAVEFORM_BINS, 0.0);
+
+	let _ = child.wait().await;
 
 	// Normalize to 0.0–1.0
 	let max_peak = peaks.iter().cloned().fold(0.0_f32, f32::max);
@@ -275,7 +325,7 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 		return Err("Start time must be before end time".to_string());
 	}
 
-	CANCEL_FLAG.store(false, Ordering::Relaxed);
+	CANCEL_FLAG.store(false, Ordering::Release);
 	println!("[extract_audio_range] path={}, start={}, end={}, output={}", path, start, end, output);
 
 	// Place -ss before -i for fast input seeking; use -t (duration) since
@@ -295,7 +345,7 @@ async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String
 	let acodec = resolve_codec(&format, &path).await;
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
 
-	CANCEL_FLAG.store(false, Ordering::Relaxed);
+	CANCEL_FLAG.store(false, Ordering::Release);
 	println!("[extract_whole_audio] path={}, output={}", path, output);
 
 	let args = vec!["-y", "-i", &path, "-vn", "-c:a", acodec, "-progress", "pipe:1", &output];
@@ -304,7 +354,7 @@ async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String
 }
 
 async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str, app: &tauri::AppHandle) -> Result<(), String> {
-	let mut child = Command::new(find_command("ffmpeg"))
+	let mut child = Command::new(ffmpeg_path())
 		.args(args)
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
@@ -318,7 +368,7 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 		let reader = BufReader::new(stdout);
 		let mut lines = reader.lines();
 		while let Ok(Some(line)) = lines.next_line().await {
-			if CANCEL_FLAG.load(Ordering::Relaxed) {
+			if CANCEL_FLAG.load(Ordering::Acquire) {
 				println!("[ffmpeg] Cancel requested, killing process");
 				let _ = child.kill().await;
 				cancelled = true;
@@ -547,10 +597,10 @@ mod tests {
 	// UC-004 | BR-007: Partial File Cleanup
 	#[test]
 	fn uc004_cancel_flag_store_and_load() {
-		CANCEL_FLAG.store(false, Ordering::Relaxed);
-		assert!(!CANCEL_FLAG.load(Ordering::Relaxed));
-		CANCEL_FLAG.store(true, Ordering::Relaxed);
-		assert!(CANCEL_FLAG.load(Ordering::Relaxed));
-		CANCEL_FLAG.store(false, Ordering::Relaxed);
+		CANCEL_FLAG.store(false, Ordering::Release);
+		assert!(!CANCEL_FLAG.load(Ordering::Acquire));
+		CANCEL_FLAG.store(true, Ordering::Release);
+		assert!(CANCEL_FLAG.load(Ordering::Acquire));
+		CANCEL_FLAG.store(false, Ordering::Release);
 	}
 }

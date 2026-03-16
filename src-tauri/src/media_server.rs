@@ -10,7 +10,6 @@ use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 const MAX_CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4 MB
-const ALLOWED_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
 
 #[derive(serde::Deserialize)]
 struct FileQuery {
@@ -36,7 +35,7 @@ async fn serve_video(Query(query): Query<FileQuery>, headers: HeaderMap) -> Resu
 
 	let file_path = Path::new(&query.path);
 	let ext = file_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
-	if !ALLOWED_EXTENSIONS.contains(&ext.as_str()) {
+	if !crate::ALLOWED_VIDEO_EXTENSIONS.contains(&ext.as_str()) {
 		return Err(StatusCode::FORBIDDEN);
 	}
 

@@ -44,8 +44,11 @@ html, body {
 .btn-ghost { background: none; color: var(--color-text-secondary); border: 0.5px solid var(--color-border-secondary); padding: 7px 14px }
 .btn-ghost:hover { background: var(--color-background-secondary) }
 
-#drop-zone { border: 1.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer; transition: background .15s, border-color .15s; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center }
-#drop-zone:hover, #drop-zone.drag-over { background: var(--color-background-secondary); border-color: var(--color-border-primary) }
+#drop-zone { border: 1.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 2rem; text-align: center; cursor: pointer; transition: background .15s, border-color .15s, transform .15s; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center }
+#drop-zone:hover { background: var(--color-background-secondary); border-color: var(--color-border-primary) }
+#drop-zone.drag-over { background: rgba(186, 117, 23, .06); border-color: #BA7517; border-style: solid; transform: scale(1.01) }
+#drop-zone.drag-over .dz-title { color: #BA7517 }
+#drop-zone.drag-over .dz-icon { border-color: #BA7517; background: rgba(186, 117, 23, .1) }
 .dz-icon { width: 48px; height: 48px; margin: 0 auto 1.5rem; border-radius: var(--border-radius-lg); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; justify-content: center }
 .dz-title { font-size: 18px; font-weight: 500; margin-bottom: .4rem; color: var(--color-text-primary) }
 .dz-sub { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 1.25rem }

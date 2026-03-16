@@ -173,18 +173,19 @@ browseBtn.addEventListener("click", (e) => {
 });
 loadNewBtn.addEventListener("click", loadNew);
 
-// Drag-and-drop visual feedback (actual file loading still uses dialog)
-dropZone.addEventListener("dragover", (e) => {
-	e.preventDefault();
-	dropZone.classList.add("drag-over");
-});
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
-dropZone.addEventListener("drop", (e) => {
-	e.preventDefault();
+// Drag-and-drop via native Tauri file-drop events
+const VIDEO_EXTS = ["mp4", "mov", "avi", "mkv", "webm"];
+listen("tauri://drag-over", () => dropZone.classList.add("drag-over"));
+listen("tauri://drag-leave", () => dropZone.classList.remove("drag-over"));
+listen("tauri://drag-drop", (event) => {
 	dropZone.classList.remove("drag-over");
-	// Tauri doesn't expose file paths from browser drop events; open dialog instead
-	openFileDialog();
+	const paths = event.payload.paths || [];
+	const file = paths.find((p) => VIDEO_EXTS.includes(p.split(".").pop().toLowerCase()));
+	if (file) loadVideo(file);
 });
+// Prevent browser default so it doesn't navigate on drop
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
 
 // ── UC-002: Preview Selected Range ─────────────────────────────────────────────
 

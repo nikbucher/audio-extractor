@@ -42,6 +42,37 @@ const ALLOWED_FORMATS: &[&str] = &["aac", "mp3", "ogg"];
 pub const ALLOWED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
 const WAVEFORM_BINS: usize = 240;
 
+#[derive(Debug, thiserror::Error)]
+enum AppError {
+	#[error("File not found: {0}")]
+	FileNotFound(String),
+	#[error("Unsupported video format: {0}")]
+	UnsupportedVideoFormat(String),
+	#[error("Unsupported output format: {0}")]
+	UnsupportedOutputFormat(String),
+	#[error("Invalid time format (expected HH:MM:SS): {0}")]
+	InvalidTimeFormat(String),
+	#[error("Minutes and seconds must be 0-59: {0}")]
+	InvalidTimeRange(String),
+	#[error("Start time must be before end time")]
+	StartAfterEnd,
+	#[error("FFmpeg failed: {0}")]
+	FfmpegFailed(String),
+	#[error("Cancelled")]
+	Cancelled,
+	#[error("{0}")]
+	Io(String),
+}
+
+impl serde::Serialize for AppError {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		serializer.serialize_str(&self.to_string())
+	}
+}
+
 /// Find a command binary by checking common installation paths.
 /// On macOS, .app bundles launched from Finder have a restricted PATH that
 /// doesn't include Homebrew paths, so we search known locations explicitly.
@@ -78,48 +109,46 @@ fn validate_extension(ext: &str) -> bool {
 	ALLOWED_VIDEO_EXTENSIONS.contains(&ext)
 }
 
-fn validate_path(path: &str) -> Result<(), String> {
+fn validate_path(path: &str) -> Result<(), AppError> {
 	let p = Path::new(path);
 	if !p.exists() {
-		return Err(format!("File not found: {}", path));
+		return Err(AppError::FileNotFound(path.to_string()));
 	}
 	match p.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
 		Some(ext) if validate_extension(&ext) => Ok(()),
-		_ => Err(format!("Unsupported video format: {}", path)),
+		_ => Err(AppError::UnsupportedVideoFormat(path.to_string())),
 	}
 }
 
-fn validate_format(format: &str) -> Result<(), String> {
+fn validate_format(format: &str) -> Result<(), AppError> {
 	if ALLOWED_FORMATS.contains(&format) {
 		Ok(())
 	} else {
-		Err(format!("Unsupported output format: {}", format))
+		Err(AppError::UnsupportedOutputFormat(format.to_string()))
 	}
 }
 
-fn validate_time(time: &str) -> Result<(), String> {
+fn validate_time(time: &str) -> Result<(), AppError> {
 	let parts: Vec<&str> = time.split(':').collect();
 	if parts.len() != 3 {
-		return Err(format!("Invalid time format (expected HH:MM:SS): {}", time));
+		return Err(AppError::InvalidTimeFormat(time.to_string()));
 	}
 	let values: Vec<u32> = parts
 		.iter()
-		.map(|p| p.parse::<u32>().map_err(|_| format!("Invalid time format (expected HH:MM:SS): {}", time)))
+		.map(|p| p.parse::<u32>().map_err(|_| AppError::InvalidTimeFormat(time.to_string())))
 		.collect::<Result<Vec<_>, _>>()?;
 	if values[1] >= 60 || values[2] >= 60 {
-		return Err(format!("Minutes and seconds must be 0-59: {}", time));
+		return Err(AppError::InvalidTimeRange(time.to_string()));
 	}
 	Ok(())
 }
 
-fn hms_to_seconds(hms: &str) -> Result<f64, String> {
+fn hms_to_seconds(hms: &str) -> Result<f64, AppError> {
+	validate_time(hms)?;
 	let parts: Vec<&str> = hms.split(':').collect();
-	if parts.len() != 3 {
-		return Err(format!("Invalid time format: {}", hms));
-	}
-	let h: f64 = parts[0].parse().map_err(|_| format!("Invalid hours: {}", parts[0]))?;
-	let m: f64 = parts[1].parse().map_err(|_| format!("Invalid minutes: {}", parts[1]))?;
-	let s: f64 = parts[2].parse().map_err(|_| format!("Invalid seconds: {}", parts[2]))?;
+	let h: f64 = parts[0].parse().unwrap();
+	let m: f64 = parts[1].parse().unwrap();
+	let s: f64 = parts[2].parse().unwrap();
 	Ok(h * 3600.0 + m * 60.0 + s)
 }
 
@@ -140,13 +169,13 @@ async fn resolve_codec(format: &str, path: &str) -> &'static str {
 	codec_for_format(format, source_codec.as_deref())
 }
 
-fn build_output_path(path: &str, format: &str, append: &str) -> Result<String, String> {
+fn build_output_path(path: &str, format: &str, append: &str) -> Result<String, AppError> {
 	let p = Path::new(path);
-	let dir = p.parent().ok_or("Cannot determine parent directory")?;
-	let stem = p.file_stem().and_then(|s| s.to_str()).ok_or("Cannot determine filename")?;
+	let dir = p.parent().ok_or_else(|| AppError::Io("Cannot determine parent directory".to_string()))?;
+	let stem = p.file_stem().and_then(|s| s.to_str()).ok_or_else(|| AppError::Io("Cannot determine filename".to_string()))?;
 	let suffix = if append.is_empty() { String::new() } else { format!("-{}", append) };
 	let output = dir.join(format!("{}{}-audio.{}", stem, suffix, format));
-	output.to_str().map(|s| s.to_string()).ok_or_else(|| "Invalid output path".to_string())
+	output.to_str().map(|s| s.to_string()).ok_or_else(|| AppError::Io("Invalid output path".to_string()))
 }
 
 async fn get_audio_codec(path: &str) -> Option<String> {
@@ -204,10 +233,10 @@ struct VideoMetadata {
 }
 
 #[tauri::command]
-async fn get_video_metadata(path: String) -> Result<VideoMetadata, String> {
+async fn get_video_metadata(path: String) -> Result<VideoMetadata, AppError> {
 	validate_path(&path)?;
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
-	let file_size_bytes = std::fs::metadata(&path).map(|m| m.len()).map_err(|e| format!("Cannot read file metadata: {}", e))?;
+	let file_size_bytes = std::fs::metadata(&path).map(|m| m.len()).map_err(|e| AppError::Io(format!("Cannot read file metadata: {}", e)))?;
 	let audio_codec = get_audio_codec(&path).await;
 	Ok(VideoMetadata {
 		duration_secs,
@@ -217,7 +246,7 @@ async fn get_video_metadata(path: String) -> Result<VideoMetadata, String> {
 }
 
 #[tauri::command]
-async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
+async fn get_audio_waveform(path: String) -> Result<Vec<f32>, AppError> {
 	validate_path(&path)?;
 
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
@@ -235,7 +264,7 @@ async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
 		.stdout(Stdio::piped())
 		.stderr(Stdio::null())
 		.spawn()
-		.map_err(|e| format!("FFmpeg failed: {}. Is FFmpeg installed?", e))?;
+		.map_err(|e| AppError::FfmpegFailed(format!("{}. Is FFmpeg installed?", e)))?;
 
 	let mut peaks: Vec<f32> = Vec::with_capacity(WAVEFORM_BINS);
 	let mut current_peak: u16 = 0;
@@ -248,7 +277,7 @@ async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
 		let mut leftover: Option<u8> = None;
 
 		loop {
-			let n = reader.read(&mut buf).await.map_err(|e| format!("Failed to read FFmpeg output: {}", e))?;
+			let n = reader.read(&mut buf).await.map_err(|e| AppError::Io(format!("Failed to read FFmpeg output: {}", e)))?;
 			if n == 0 {
 				break;
 			}
@@ -312,7 +341,7 @@ async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
 }
 
 #[tauri::command]
-async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String, end: String, format: String, append: String) -> Result<(), String> {
+async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String, end: String, format: String, append: String) -> Result<(), AppError> {
 	validate_path(&path)?;
 	validate_format(&format)?;
 	validate_time(&start)?;
@@ -322,7 +351,7 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 	let acodec = resolve_codec(&format, &path).await;
 	let duration_secs = hms_to_seconds(&end)? - hms_to_seconds(&start)?;
 	if duration_secs <= 0.0 {
-		return Err("Start time must be before end time".to_string());
+		return Err(AppError::StartAfterEnd);
 	}
 
 	CANCEL_FLAG.store(false, Ordering::Release);
@@ -337,7 +366,7 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 }
 
 #[tauri::command]
-async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String, append: String) -> Result<(), String> {
+async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String, append: String) -> Result<(), AppError> {
 	validate_path(&path)?;
 	validate_format(&format)?;
 
@@ -353,14 +382,16 @@ async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String
 	run_ffmpeg_command(&args, duration_secs, &output, &app).await
 }
 
-async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str, app: &tauri::AppHandle) -> Result<(), String> {
+async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str, app: &tauri::AppHandle) -> Result<(), AppError> {
 	let mut child = Command::new(ffmpeg_path())
 		.args(args)
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
 		.spawn()
-		.map_err(|e| format!("FFmpeg failed: {}. Is FFmpeg installed and in your PATH?", e))?;
+		.map_err(|e| AppError::FfmpegFailed(format!("{}. Is FFmpeg installed and in your PATH?", e)))?;
 
+	// Take stderr before the progress loop so we can read it after waiting.
+	let stderr_handle = child.stderr.take();
 	let mut cancelled = false;
 
 	// Read progress from stdout
@@ -385,18 +416,20 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 	}
 
 	if cancelled {
-		// Clean up partial output file
 		let _ = tokio::fs::remove_file(output_path).await;
-		return Err("Cancelled".to_string());
+		return Err(AppError::Cancelled);
 	}
 
-	let output = child.wait_with_output().await.map_err(|e| format!("FFmpeg failed: {}", e))?;
+	let status = child.wait().await.map_err(|e| AppError::FfmpegFailed(e.to_string()))?;
 
-	println!("[ffmpeg] exited with status: {}", output.status);
-	if !output.status.success() {
-		let stderr = String::from_utf8_lossy(&output.stderr);
-		println!("[ffmpeg] stderr: {}", stderr);
-		return Err(format!("FFmpeg failed: {}", stderr));
+	println!("[ffmpeg] exited with status: {}", status);
+	if !status.success() {
+		let mut stderr_buf = String::new();
+		if let Some(mut stderr) = stderr_handle {
+			let _ = stderr.read_to_string(&mut stderr_buf).await;
+		}
+		println!("[ffmpeg] stderr: {}", stderr_buf);
+		return Err(AppError::FfmpegFailed(stderr_buf));
 	}
 
 	let _ = app.emit("extraction-progress", 100.0_f64);
@@ -454,7 +487,7 @@ mod tests {
 	fn uc001_validate_path_rejects_missing_file() {
 		let result = validate_path("/nonexistent/video.mp4");
 		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("File not found"));
+		assert!(result.unwrap_err().to_string().contains("File not found"));
 	}
 
 	#[test]
@@ -464,7 +497,7 @@ mod tests {
 		std::fs::write(&path, "data").unwrap();
 		let result = validate_path(path.to_str().unwrap());
 		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("Unsupported video format"));
+		assert!(result.unwrap_err().to_string().contains("Unsupported video format"));
 	}
 
 	#[test]
@@ -487,7 +520,7 @@ mod tests {
 	fn uc002_validate_time_rejects_two_parts() {
 		let result = validate_time("10:30");
 		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("expected HH:MM:SS"));
+		assert!(result.unwrap_err().to_string().contains("expected HH:MM:SS"));
 	}
 
 	#[test]
@@ -501,7 +534,7 @@ mod tests {
 	fn uc002_validate_time_rejects_invalid_minutes() {
 		let result = validate_time("00:60:00");
 		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("0-59"));
+		assert!(result.unwrap_err().to_string().contains("0-59"));
 	}
 
 	/// UC-002 | BR-002: Minutes and seconds must be 0-59
@@ -509,7 +542,7 @@ mod tests {
 	fn uc002_validate_time_rejects_invalid_seconds() {
 		let result = validate_time("00:00:60");
 		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("0-59"));
+		assert!(result.unwrap_err().to_string().contains("0-59"));
 	}
 
 	#[test]

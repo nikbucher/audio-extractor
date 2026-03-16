@@ -1,5 +1,7 @@
 # Audio Extractor
 
+[![Build](https://github.com/nikbucher/audio-extractor/actions/workflows/build.yml/badge.svg)](https://github.com/nikbucher/audio-extractor/actions/workflows/build.yml)
+
 A simple Tauri app to extract audio from video files using FFmpeg. This is a personal try-out project I created to learn
 Rust and Tauri development.
 
@@ -18,6 +20,8 @@ This project serves as my learning playground for:
 - Support for different audio formats (AAC, MP3, OGG)
 - Extract entire audio track or specific time ranges
 - Simple and intuitive user interface
+
+![Audio Extractor](docs/screenshot.png)
 
 ## Installation
 

@@ -95,7 +95,6 @@ with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) f
 ### Prerequisites
 
 - Install [Rust](https://www.rust-lang.org/tools/install)
-- Install [Node.js](https://nodejs.org/) (LTS version recommended)
 - Install FFmpeg (see [FFmpeg Installation](#ffmpeg-installation) section)
 
 ### Getting Started
@@ -103,7 +102,6 @@ with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) f
 ```sh
 git clone https://github.com/nikbucher/audio-snip.git
 cd audio-snip
-npm install
 cargo tauri dev
 ```
 

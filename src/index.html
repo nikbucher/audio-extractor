@@ -1,43 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Audio Extractor</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="script.js" defer></script>
+	<meta charset="UTF-8">
+	<title>Audio Extractor</title>
+	<link rel="stylesheet" href="style.css">
+	<script src="script.js" defer></script>
 </head>
 <body>
-  <h2>🎬 Audio Extractor</h2>
-  <video id="preview" controls></video>
-  <div class="controls-container">
-    <button id="videoInput">Select Video</button>
-    <div class="field-group-bg">
-      <div class="field-group">
-        <input type="checkbox" id="extractWhole" name="extractWhole" class="field-input">
-        <label class="field-label" for="extractWhole">Extract whole audio</label>
-      </div>
-      <div class="field-group" id="start-group">
-        <label class="field-label" for="start">Start</label>
-        <input type="time" id="start" step="1" value="00:00:00" class="field-input">
-      </div>
-      <div class="field-group" id="end-group">
-        <label class="field-label" for="end">End</label>
-        <input type="time" id="end" step="1" value="00:00:00" class="field-input">
-      </div>
-    </div>
-    <div class="field-group">
-      <label class="field-label" for="format">Output format:</label>
-      <select id="format" class="field-input">
-        <option value="aac">AAC (.aac)</option>
-        <option value="mp3" selected>MP3 (.mp3)</option>
-        <option value="ogg">OGG (.ogg)</option>
-      </select>
-    </div>
-    <div class="field-group">
-      <label class="field-label" for="appendText">Append to filename:</label>
-      <input type="text" id="appendText" placeholder="Enter text..." class="field-input">
-    </div>
-    <button id="extract">🔊 Extract Audio</button>
-  </div>
+<div class="wrap">
+
+	<!-- UC-001: Drop zone for file selection -->
+	<div id="drop-zone">
+		<div class="dz-icon">
+			<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-secondary)"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+		</div>
+		<p class="dz-title">Drop a video file here</p>
+		<p class="dz-sub">MP4, MOV, MKV, AVI, WebM</p>
+		<button class="btn btn-primary" id="browse-btn">Browse files</button>
+		<div class="dz-fmts">
+			<span class="dz-badge">AAC</span><span class="dz-badge">MP3</span><span class="dz-badge">OGG</span>
+		</div>
+	</div>
+
+	<!-- Editor (shown after file selection) -->
+	<div id="editor">
+		<div class="ed-head">
+			<div class="file-badge">
+				<div class="file-icon">
+					<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--color-text-secondary)"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+				</div>
+				<div>
+					<div class="file-name" id="file-name"></div>
+					<div class="file-meta" id="file-meta"></div>
+				</div>
+			</div>
+			<button class="btn btn-ghost" id="load-new-btn">Load different file</button>
+		</div>
+
+		<div class="ed-main">
+			<!-- Video card -->
+			<div class="video-card">
+				<div class="video-screen" id="video-screen">
+					<video id="preview"></video>
+					<div class="play-ring" id="play-ring">
+						<svg id="ico-play" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21"/></svg>
+						<svg id="ico-pause" width="20" height="20" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="5" y="4" width="4" height="16"/><rect x="15" y="4" width="4" height="16"/></svg>
+					</div>
+				</div>
+				<div class="vid-bar">
+					<span class="vid-ts" id="vid-ts">0:00</span>
+					<input type="range" min="0" max="100" value="0" id="vid-scrub" class="vid-scrub">
+					<span class="vid-ts" id="vid-dur">0:00</span>
+				</div>
+			</div>
+
+			<!-- Control panel -->
+			<div class="ctrl-panel">
+				<!-- UC-002: Time range -->
+				<div class="panel-card">
+					<div class="plabel">Time range</div>
+					<div class="time-row" id="time-row">
+						<div class="tfield"><label>Start</label><input type="text" id="t-start" value="0:00"></div>
+						<div class="tfield"><label>End</label><input type="text" id="t-end" value="0:00"></div>
+					</div>
+					<div class="whole-row" id="whole-row">
+						<div class="chkbox" id="chkbox">
+							<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 3.5,6.5 9,1" stroke="var(--color-background-primary)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						</div>
+						<span class="whole-label">Extract whole audio</span>
+					</div>
+				</div>
+
+				<!-- UC-003: Output format -->
+				<div class="panel-card">
+					<div class="plabel">Output format</div>
+					<div class="fmt-chips" id="fmt-chips">
+						<div class="fchip" data-f="aac">AAC</div>
+						<div class="fchip on" data-f="mp3">MP3</div>
+						<div class="fchip" data-f="ogg">OGG</div>
+					</div>
+				</div>
+
+				<!-- UC-003: Filename suffix -->
+				<div class="panel-card">
+					<div class="plabel">Filename suffix</div>
+					<input type="text" id="append-text" class="suffix-input" placeholder="optional">
+				</div>
+
+				<!-- UC-003: Extract button / UC-004: Cancel -->
+				<button class="btn-xtr" id="extract-btn">
+					<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M12 2v10M7 7l5 5 5-5"/><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/></svg>
+					<span id="extract-label">Extract audio</span>
+				</button>
+			</div>
+		</div>
+
+		<!-- UC-002: Waveform timeline -->
+		<div class="wf-card">
+			<div class="wf-head">
+				<span class="wf-label">Timeline</span>
+				<span class="wf-sel-info" id="wf-info">0:00 → 0:00</span>
+			</div>
+			<div class="wf-wrap" id="wf-wrap">
+				<canvas id="wf-canvas"></canvas>
+				<div class="wf-handle" id="h-start" style="left:0%"></div>
+				<div class="wf-handle" id="h-end" style="left:100%"></div>
+				<div class="wf-playhead" id="playhead" style="left:0%"></div>
+			</div>
+			<div class="wf-times" id="wf-times"></div>
+		</div>
+	</div>
+
+</div>
 </body>
 </html>

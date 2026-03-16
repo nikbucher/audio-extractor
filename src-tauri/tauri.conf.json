@@ -11,8 +11,8 @@
     "windows": [
       {
         "title": "audio-extractor",
-        "width": 800,
-        "height": 800
+        "width": 860,
+        "height": 700
       }
     ],
     "security": {

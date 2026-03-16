@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use tauri::Emitter;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 
 static MEDIA_SERVER_PORT: AtomicU16 = AtomicU16::new(0);
@@ -24,6 +24,7 @@ fn cancel_extraction() {
 
 const ALLOWED_FORMATS: &[&str] = &["aac", "mp3", "ogg"];
 const ALLOWED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "avi", "mkv", "webm"];
+const WAVEFORM_BINS: usize = 240;
 
 /// Find a command binary by checking common installation paths.
 /// On macOS, .app bundles launched from Finder have a restricted PATH that
@@ -47,13 +48,17 @@ fn find_command(name: &str) -> String {
 	name.to_string()
 }
 
+fn validate_extension(ext: &str) -> bool {
+	ALLOWED_VIDEO_EXTENSIONS.contains(&ext)
+}
+
 fn validate_path(path: &str) -> Result<(), String> {
 	let p = Path::new(path);
 	if !p.exists() {
 		return Err(format!("File not found: {}", path));
 	}
 	match p.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
-		Some(ext) if ALLOWED_VIDEO_EXTENSIONS.contains(&ext.as_str()) => Ok(()),
+		Some(ext) if validate_extension(&ext) => Ok(()),
 		_ => Err(format!("Unsupported video format: {}", path)),
 	}
 }
@@ -71,10 +76,12 @@ fn validate_time(time: &str) -> Result<(), String> {
 	if parts.len() != 3 {
 		return Err(format!("Invalid time format (expected HH:MM:SS): {}", time));
 	}
-	for part in &parts {
-		if part.parse::<u32>().is_err() {
-			return Err(format!("Invalid time format (expected HH:MM:SS): {}", time));
-		}
+	let values: Vec<u32> = parts
+		.iter()
+		.map(|p| p.parse::<u32>().map_err(|_| format!("Invalid time format (expected HH:MM:SS): {}", time)))
+		.collect::<Result<Vec<_>, _>>()?;
+	if values[1] >= 60 || values[2] >= 60 {
+		return Err(format!("Minutes and seconds must be 0-59: {}", time));
 	}
 	Ok(())
 }
@@ -90,9 +97,9 @@ fn hms_to_seconds(hms: &str) -> Result<f64, String> {
 	Ok(h * 3600.0 + m * 60.0 + s)
 }
 
-async fn resolve_codec(format: &str, path: &str) -> &'static str {
+fn codec_for_format(format: &str, source_codec: Option<&str>) -> &'static str {
 	match format {
-		"aac" => match get_audio_codec(path).await.as_deref() {
+		"aac" => match source_codec {
 			Some("aac") => "copy",
 			_ => "aac",
 		},
@@ -100,6 +107,11 @@ async fn resolve_codec(format: &str, path: &str) -> &'static str {
 		"ogg" => "libvorbis",
 		_ => "copy",
 	}
+}
+
+async fn resolve_codec(format: &str, path: &str) -> &'static str {
+	let source_codec = get_audio_codec(path).await;
+	codec_for_format(format, source_codec.as_deref())
 }
 
 fn build_output_path(path: &str, format: &str, append: &str) -> Result<String, String> {
@@ -158,6 +170,81 @@ async fn get_duration(path: &str) -> Option<f64> {
 	String::from_utf8_lossy(&output.stdout).trim().parse::<f64>().ok()
 }
 
+#[derive(serde::Serialize)]
+struct VideoMetadata {
+	duration_secs: f64,
+	file_size_bytes: u64,
+	audio_codec: Option<String>,
+}
+
+#[tauri::command]
+async fn get_video_metadata(path: String) -> Result<VideoMetadata, String> {
+	validate_path(&path)?;
+	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
+	let file_size_bytes = std::fs::metadata(&path).map(|m| m.len()).map_err(|e| format!("Cannot read file metadata: {}", e))?;
+	let audio_codec = get_audio_codec(&path).await;
+	Ok(VideoMetadata {
+		duration_secs,
+		file_size_bytes,
+		audio_codec,
+	})
+}
+
+#[tauri::command]
+async fn get_audio_waveform(path: String) -> Result<Vec<f32>, String> {
+	validate_path(&path)?;
+
+	let mut child = Command::new(find_command("ffmpeg"))
+		.args(["-i", &path, "-vn", "-ac", "1", "-ar", "8000", "-f", "s16le", "pipe:1"])
+		.stdout(Stdio::piped())
+		.stderr(Stdio::null())
+		.spawn()
+		.map_err(|e| format!("FFmpeg failed: {}. Is FFmpeg installed?", e))?;
+
+	let mut raw_bytes = Vec::new();
+	if let Some(mut stdout) = child.stdout.take() {
+		stdout.read_to_end(&mut raw_bytes).await.map_err(|e| format!("Failed to read FFmpeg output: {}", e))?;
+	}
+
+	let status = child.wait().await.map_err(|e| format!("FFmpeg failed: {}", e))?;
+	if !status.success() {
+		return Err("FFmpeg failed to extract audio data".to_string());
+	}
+
+	// Convert raw bytes to i16 samples (little-endian)
+	let samples: Vec<i16> = raw_bytes.chunks_exact(2).map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]])).collect();
+
+	if samples.is_empty() {
+		return Ok(vec![0.0; WAVEFORM_BINS]);
+	}
+
+	// Bin samples and take absolute peak per bin
+	let bin_size = samples.len() / WAVEFORM_BINS;
+	let bin_size = bin_size.max(1);
+	let mut peaks: Vec<f32> = Vec::with_capacity(WAVEFORM_BINS);
+
+	for i in 0..WAVEFORM_BINS {
+		let start = i * bin_size;
+		let end = ((i + 1) * bin_size).min(samples.len());
+		if start >= samples.len() {
+			peaks.push(0.0);
+		} else {
+			let peak = samples[start..end].iter().map(|s| s.unsigned_abs()).max().unwrap_or(0);
+			peaks.push(peak as f32);
+		}
+	}
+
+	// Normalize to 0.0–1.0
+	let max_peak = peaks.iter().cloned().fold(0.0_f32, f32::max);
+	if max_peak > 0.0 {
+		for p in &mut peaks {
+			*p /= max_peak;
+		}
+	}
+
+	Ok(peaks)
+}
+
 #[tauri::command]
 async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String, end: String, format: String, append: String) -> Result<(), String> {
 	validate_path(&path)?;
@@ -168,6 +255,9 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 	let output = build_output_path(&path, &format, &append)?;
 	let acodec = resolve_codec(&format, &path).await;
 	let duration_secs = hms_to_seconds(&end)? - hms_to_seconds(&start)?;
+	if duration_secs <= 0.0 {
+		return Err("Start time must be before end time".to_string());
+	}
 
 	CANCEL_FLAG.store(false, Ordering::Relaxed);
 	println!("[extract_audio_range] path={}, start={}, end={}, output={}", path, start, end, output);
@@ -215,14 +305,12 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 				cancelled = true;
 				break;
 			}
-			if let Some(time_us_str) = line.strip_prefix("out_time_us=") {
-				if duration_secs > 0.0 {
-					if let Ok(time_us) = time_us_str.parse::<f64>() {
+			if let Some(time_us_str) = line.strip_prefix("out_time_us=")
+				&& duration_secs > 0.0
+					&& let Ok(time_us) = time_us_str.parse::<f64>() {
 						let progress = ((time_us / 1_000_000.0) / duration_secs * 100.0).min(100.0);
 						let _ = app.emit("extraction-progress", progress);
 					}
-				}
-			}
 		}
 	}
 
@@ -257,7 +345,191 @@ pub fn run() {
 			println!("[setup] Media server started on port {}", port);
 			Ok(())
 		})
-		.invoke_handler(tauri::generate_handler![extract_audio_range, extract_whole_audio, cancel_extraction, get_media_server_port])
+		.invoke_handler(tauri::generate_handler![
+			extract_audio_range,
+			extract_whole_audio,
+			cancel_extraction,
+			get_media_server_port,
+			get_video_metadata,
+			get_audio_waveform,
+		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use std::sync::atomic::Ordering;
+
+	/// UC-001 | BR-001: All supported video formats are accepted
+	#[test]
+	fn uc001_validate_extension_accepts_supported() {
+		for ext in ALLOWED_VIDEO_EXTENSIONS {
+			assert!(validate_extension(ext), "expected {ext} to be accepted");
+		}
+	}
+
+	/// UC-001 | BR-001: Non-video formats are rejected
+	#[test]
+	fn uc001_validate_extension_rejects_unsupported() {
+		for ext in ["txt", "mp3", "pdf", "jpg", "flac"] {
+			assert!(!validate_extension(ext), "expected {ext} to be rejected");
+		}
+	}
+
+	/// UC-001 | A4: Missing file is rejected
+	#[test]
+	fn uc001_validate_path_rejects_missing_file() {
+		let result = validate_path("/nonexistent/video.mp4");
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("File not found"));
+	}
+
+	#[test]
+	fn uc001_validate_path_rejects_unsupported_extension() {
+		let dir = tempfile::tempdir().unwrap();
+		let path = dir.path().join("file.txt");
+		std::fs::write(&path, "data").unwrap();
+		let result = validate_path(path.to_str().unwrap());
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("Unsupported video format"));
+	}
+
+	#[test]
+	fn uc001_validate_path_accepts_valid_video() {
+		let dir = tempfile::tempdir().unwrap();
+		let path = dir.path().join("video.mp4");
+		std::fs::write(&path, "data").unwrap();
+		assert!(validate_path(path.to_str().unwrap()).is_ok());
+	}
+
+	// UC-002 | BR-002: Time Format
+	#[test]
+	fn uc002_validate_time_accepts_valid_hms() {
+		assert!(validate_time("00:00:00").is_ok());
+		assert!(validate_time("01:30:45").is_ok());
+		assert!(validate_time("12:59:59").is_ok());
+	}
+
+	#[test]
+	fn uc002_validate_time_rejects_two_parts() {
+		let result = validate_time("10:30");
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("expected HH:MM:SS"));
+	}
+
+	#[test]
+	fn uc002_validate_time_rejects_non_numeric() {
+		let result = validate_time("ab:cd:ef");
+		assert!(result.is_err());
+	}
+
+	/// UC-002 | BR-002: Minutes and seconds must be 0-59
+	#[test]
+	fn uc002_validate_time_rejects_invalid_minutes() {
+		let result = validate_time("00:60:00");
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("0-59"));
+	}
+
+	/// UC-002 | BR-002: Minutes and seconds must be 0-59
+	#[test]
+	fn uc002_validate_time_rejects_invalid_seconds() {
+		let result = validate_time("00:00:60");
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("0-59"));
+	}
+
+	#[test]
+	fn uc002_hms_to_seconds_zero() {
+		assert_eq!(hms_to_seconds("00:00:00").unwrap(), 0.0);
+	}
+
+	#[test]
+	fn uc002_hms_to_seconds_minutes_only() {
+		assert_eq!(hms_to_seconds("00:05:30").unwrap(), 330.0);
+	}
+
+	#[test]
+	fn uc002_hms_to_seconds_with_hours() {
+		assert_eq!(hms_to_seconds("01:30:00").unwrap(), 5400.0);
+	}
+
+	// UC-002 | BR-003: Range Constraints
+	#[test]
+	fn uc002_range_start_before_end() {
+		let start = hms_to_seconds("00:01:00").unwrap();
+		let end = hms_to_seconds("00:05:00").unwrap();
+		assert!(end > start);
+	}
+
+	/// UC-003 | BR-004: All supported output formats are accepted
+	#[test]
+	fn uc003_validate_format_accepts_supported() {
+		for fmt in ALLOWED_FORMATS {
+			assert!(validate_format(fmt).is_ok(), "expected {fmt} to be accepted");
+		}
+	}
+
+	/// UC-003 | BR-004: Unsupported output formats are rejected
+	#[test]
+	fn uc003_validate_format_rejects_unsupported() {
+		for fmt in ["wav", "flac", "wma", "m4a"] {
+			assert!(validate_format(fmt).is_err(), "expected {fmt} to be rejected");
+		}
+	}
+
+	// UC-003 | BR-005: Output Filename Convention
+	#[test]
+	fn uc003_build_output_path_basic() {
+		let result = build_output_path("/tmp/video.mp4", "mp3", "").unwrap();
+		assert_eq!(result, "/tmp/video-audio.mp3");
+	}
+
+	#[test]
+	fn uc003_build_output_path_with_suffix() {
+		let result = build_output_path("/tmp/video.mp4", "aac", "intro").unwrap();
+		assert_eq!(result, "/tmp/video-intro-audio.aac");
+	}
+
+	#[test]
+	fn uc003_build_output_path_empty_suffix() {
+		let result = build_output_path("/home/user/my_video.mkv", "ogg", "").unwrap();
+		assert_eq!(result, "/home/user/my_video-audio.ogg");
+	}
+
+	// UC-003 | BR-006: Codec Optimization
+	#[test]
+	fn uc003_codec_for_format_aac_copy_when_source_aac() {
+		assert_eq!(codec_for_format("aac", Some("aac")), "copy");
+	}
+
+	#[test]
+	fn uc003_codec_for_format_aac_encode_when_source_other() {
+		assert_eq!(codec_for_format("aac", Some("mp3")), "aac");
+		assert_eq!(codec_for_format("aac", None), "aac");
+	}
+
+	#[test]
+	fn uc003_codec_for_format_mp3() {
+		assert_eq!(codec_for_format("mp3", None), "libmp3lame");
+		assert_eq!(codec_for_format("mp3", Some("aac")), "libmp3lame");
+	}
+
+	#[test]
+	fn uc003_codec_for_format_ogg() {
+		assert_eq!(codec_for_format("ogg", None), "libvorbis");
+		assert_eq!(codec_for_format("ogg", Some("aac")), "libvorbis");
+	}
+
+	// UC-004 | BR-007: Partial File Cleanup
+	#[test]
+	fn uc004_cancel_flag_store_and_load() {
+		CANCEL_FLAG.store(false, Ordering::Relaxed);
+		assert!(!CANCEL_FLAG.load(Ordering::Relaxed));
+		CANCEL_FLAG.store(true, Ordering::Relaxed);
+		assert!(CANCEL_FLAG.load(Ordering::Relaxed));
+		CANCEL_FLAG.store(false, Ordering::Relaxed);
+	}
 }

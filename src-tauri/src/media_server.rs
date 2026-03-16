@@ -84,9 +84,7 @@ async fn serve_video(Query(query): Query<FileQuery>, headers: HeaderMap) -> Resu
 
 fn parse_range(range: &str, file_size: u64) -> Option<(u64, u64)> {
 	let range = range.strip_prefix("bytes=")?;
-	let mut parts = range.splitn(2, '-');
-	let start_str = parts.next()?;
-	let end_str = parts.next()?;
+	let (start_str, end_str) = range.split_once('-')?;
 
 	if start_str.is_empty() {
 		let suffix: u64 = end_str.parse().ok()?;

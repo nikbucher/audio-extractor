@@ -26,3 +26,6 @@ tauri-plugin-dialog = "2"
 axum = "0.7"
 tokio = { version = "1", features = ["net", "io-util", "fs", "process"] }
 tokio-util = { version = "0.7", features = ["io"] }
+
+[dev-dependencies]
+tempfile = "3"

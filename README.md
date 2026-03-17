@@ -10,7 +10,8 @@ A cross-platform desktop app to extract audio from video files using FFmpeg, bui
 - Support for AAC, MP3, and OGG output formats
 - Extract entire audio track or specific time ranges
 - Waveform timeline with draggable range handles
-- In-app video preview
+- In-app video preview with on-the-fly transcoding for all formats
+- Drag-and-drop video files onto the app
 - Async extraction with progress reporting and cancellation
 - Codec-aware optimization (stream copy when source matches target format)
 
@@ -95,6 +96,7 @@ with FFmpeg's license terms. See [FFmpeg Legal](https://ffmpeg.org/legal.html) f
 ### Prerequisites
 
 - Install [Rust](https://www.rust-lang.org/tools/install)
+- Install [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (system dependencies)
 - Install FFmpeg (see [FFmpeg Installation](#ffmpeg-installation) section)
 
 ### Getting Started
@@ -118,14 +120,7 @@ cargo tauri dev
 
 ## Releasing
 
-To create a new release, push a version tag:
-
-```sh
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-This triggers the GitHub Actions release workflow, which automatically builds artifacts for all platforms and creates a GitHub release. The version in the artifact filenames is derived from the git tag.
+See [Contributing](CONTRIBUTING.md#releasing) for the full release process.
 
 ## Documentation
 

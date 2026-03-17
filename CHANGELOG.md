@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-17
+
+### Added
+
+- AVI/MKV video preview via progressive in-memory transcode with hls.js
+- Waveform loading indicator and clear stale data on file switch
+
+### Fixed
+
+- Add `blob:` to CSP for hls.js MediaSource and Web Workers in production
+- Harden input sanitization, async correctness, and security defaults
+
+### Changed
+
+- Replace `println!`/`eprintln!` with `tauri-plugin-log`
+- Set log level to debug to filter tao/axum trace noise
+
 ## [0.4.2] - 2026-03-16
 
 ### Fixed
@@ -67,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Time range selection for partial extraction
 - Cross-platform builds for macOS, Windows, and Linux
 
-[Unreleased]: https://github.com/nikbucher/audio-snip/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/nikbucher/audio-snip/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/nikbucher/audio-snip/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/nikbucher/audio-snip/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/nikbucher/audio-snip/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/nikbucher/audio-snip/compare/v0.3.0...v0.4.0

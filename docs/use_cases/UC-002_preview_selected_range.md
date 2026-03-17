@@ -11,21 +11,25 @@
 ## Preconditions
 
 - A video file is loaded (UC-001 completed successfully).
+- The audio waveform is displayed in the timeline.
 - The from/to range handles are visible and set to the full video duration.
 
 ## Main Success Scenario
 
-1. User drags the "from" handle to set the start of the range.
-2. User drags the "to" handle to set the end of the range.
-3. User plays the video.
-4. System plays the video constrained to the selected range.
-5. User confirms the selection covers the desired audio segment.
+1. User drags the "from" handle on the waveform timeline to set the start of the range.
+2. User drags the "to" handle on the waveform timeline to set the end of the range.
+3. System highlights the selected region on the waveform and updates the time display.
+4. User plays the video.
+5. System plays the video constrained to the selected range.
+6. System displays a playhead on the waveform that tracks the current playback position.
+7. System pauses playback and resets the playhead when the "to" boundary is reached.
+8. User confirms the selection covers the desired audio segment.
 
 ## Alternative Flows
 
 ### A1: Adjust Range After Previewing
 
-**Trigger:** The previewed range doesn't match what the user wants (step 5).
+**Trigger:** The previewed range doesn't match what the user wants (step 8).
 **Flow:**
 
 1. User adjusts the from and/or to handles.
@@ -36,8 +40,9 @@
 **Trigger:** User wants the full audio track (step 1).
 **Flow:**
 
-1. User leaves the from/to handles at their default positions (full duration).
-2. Use case ends — no preview adjustment needed.
+1. User checks the "Extract whole audio" checkbox.
+2. System hides the range handles and highlights the entire waveform.
+3. Use case ends — no preview adjustment needed.
 
 ### A3: Type Time Values Manually
 
@@ -45,14 +50,33 @@
 **Flow:**
 
 1. User enters start and end times directly in the time input fields.
-2. System updates the handle positions to match.
-3. Use case continues at step 3.
+2. System updates the handle positions and waveform highlight to match.
+3. Use case continues at step 4.
+
+### A4: Seek via Waveform
+
+**Trigger:** User wants to jump to a specific position (step 4).
+**Flow:**
+
+1. User clicks a position on the waveform timeline.
+2. System moves the video playback position to the clicked time.
+3. Use case continues at step 5.
+
+### A5: Seek via Scrubber
+
+**Trigger:** User wants to jump to a specific position (step 4).
+**Flow:**
+
+1. User drags the video scrubber below the preview.
+2. System moves the video playback position to the selected time.
+3. Use case continues at step 5.
 
 ## Postconditions
 
 ### Success Postconditions
 
 - The from/to range reflects the user's desired audio segment.
+- The selected range is visually highlighted on the waveform.
 - The user has verified the selection through playback.
 
 ### Failure Postconditions

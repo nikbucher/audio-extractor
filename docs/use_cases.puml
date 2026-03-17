@@ -2,21 +2,25 @@
 left to right direction
 
 actor "User" as user
+actor "Browser\n(Video Element)" as browser
 
 rectangle "AudioSnip" {
     usecase "UC-001\nSelect Video File" as UC001
     usecase "UC-002\nPreview Selected Range" as UC002
     usecase "UC-003\nExtract Audio" as UC003
     usecase "UC-004\nCancel Extraction" as UC004
+    usecase "UC-005\nServe Video Preview" as UC005
 }
 
 user --> UC001
 user --> UC002
 user --> UC003
 user --> UC004
+browser --> UC005
 
 UC002 ..> UC001 : <<include>>
 UC003 ..> UC001 : <<include>>
 UC004 ..> UC003 : <<extend>>
+UC001 ..> UC005 : <<include>>
 
 @enduml

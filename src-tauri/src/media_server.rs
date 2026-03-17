@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::Notify;
+use tokio::time::{Duration, timeout};
 
 const MAX_CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4 MB
 
@@ -154,12 +155,7 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 	println!("[transcode] start: codec={}, strategy={}, duration={:.1}s", vcodec, if can_remux { "remux" } else { "encode" }, dur);
 	let t_start = std::time::Instant::now();
 
-	let mut child = match tokio::process::Command::new(crate::ffmpeg_path())
-		.args(&args)
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()
-	{
+	let mut child = match tokio::process::Command::new(crate::ffmpeg_path()).args(&args).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
 		Ok(c) => c,
 		Err(e) => {
 			eprintln!("[transcode] spawn failed: {}", e);
@@ -179,13 +175,18 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 				println!("[transcode] aborted");
 				break;
 			}
-			match stdout.read(&mut buf).await {
-				Ok(0) => break,
-				Ok(n) => {
+			match timeout(Duration::from_secs(30), stdout.read(&mut buf)).await {
+				Ok(Ok(0)) => break,
+				Ok(Ok(n)) => {
 					session.buffer.lock().unwrap().extend_from_slice(&buf[..n]);
 					session.notify.notify_waiters();
 				}
-				Err(_) => break,
+				Ok(Err(_)) => break,
+				Err(_) => {
+					eprintln!("[transcode] read timeout (30s), killing FFmpeg");
+					let _ = child.kill().await;
+					break;
+				}
 			}
 		}
 	}
@@ -363,10 +364,14 @@ async fn serve_hls_playlist(Query(query): Query<FileQuery>) -> Result<Response, 
 	let dur = session.get_duration();
 
 	// Percent-encode the path for use in playlist URIs
-	let encoded_path: String = query.path.bytes().map(|b| match b {
-		b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'/' => (b as char).to_string(),
-		_ => format!("%{:02X}", b),
-	}).collect();
+	let encoded_path: String = query
+		.path
+		.bytes()
+		.map(|b| match b {
+			b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'/' => (b as char).to_string(),
+			_ => format!("%{:02X}", b),
+		})
+		.collect();
 	let video_uri = format!("/video?path={}", encoded_path);
 
 	// Init segment: everything before the first moof

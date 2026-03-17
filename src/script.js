@@ -74,6 +74,7 @@ function toHMS(s) {
 
 function parseTime(str) {
 	const p = str.trim().split(":").map(Number);
+	if (p.some(isNaN)) return 0;
 	if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
 	if (p.length === 2) return p[0] * 60 + p[1];
 	return 0;
@@ -190,14 +191,20 @@ function loadViaHLS(path) {
 	hls.loadSource(hlsUrl);
 	hls.attachMedia(video);
 
+	let hlsRetries = 0;
+	const MAX_HLS_RETRIES = 10;
+
 	hls.on(Hls.Events.ERROR, (_event, data) => {
 		console.warn(`[hls] ${data.type}: ${data.details}${data.fatal ? " (fatal)" : ""}`);
 		if (data.fatal) {
-			if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-				// Playlist may be empty during early transcode — retry
-				setTimeout(() => hls.startLoad(), 500);
+			if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsRetries < MAX_HLS_RETRIES) {
+				hlsRetries++;
+				// Playlist may be empty during early transcode — retry with backoff
+				setTimeout(() => hls.startLoad(), 500 * hlsRetries);
 			} else {
+				console.error("[hls] giving up after", hlsRetries, "retries");
 				hls.destroy();
+				vidOverlay.classList.add("hidden");
 			}
 		}
 	});
@@ -309,7 +316,7 @@ function refresh() {
 
 function renderTimeMarkers() {
 	const count = 5;
-	wfTimes.innerHTML = "";
+	wfTimes.textContent = "";
 	for (let i = 0; i < count; i++) {
 		const span = document.createElement("span");
 		span.className = "wf-t";
@@ -425,9 +432,13 @@ vidScrub.addEventListener("input", () => {
 	video.currentTime = Number(vidScrub.value);
 });
 
-// Resize handler
+// Resize handler (debounced)
+let resizeTimer;
 window.addEventListener("resize", () => {
-	if (editor.style.display !== "none") drawWave();
+	clearTimeout(resizeTimer);
+	resizeTimer = setTimeout(() => {
+		if (editor.style.display !== "none") drawWave();
+	}, 80);
 });
 
 // ── UC-003: Extract Audio ──────────────────────────────────────────────────────

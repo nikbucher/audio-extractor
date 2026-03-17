@@ -129,27 +129,22 @@ fn validate_format(format: &str) -> Result<(), AppError> {
 }
 
 fn validate_time(time: &str) -> Result<(), AppError> {
-	let parts: Vec<&str> = time.split(':').collect();
-	if parts.len() != 3 {
-		return Err(AppError::InvalidTimeFormat(time.to_string()));
-	}
-	let values: Vec<u32> = parts
-		.iter()
-		.map(|p| p.parse::<u32>().map_err(|_| AppError::InvalidTimeFormat(time.to_string())))
-		.collect::<Result<Vec<_>, _>>()?;
-	if values[1] >= 60 || values[2] >= 60 {
-		return Err(AppError::InvalidTimeRange(time.to_string()));
-	}
+	hms_to_seconds(time)?;
 	Ok(())
 }
 
 fn hms_to_seconds(hms: &str) -> Result<f64, AppError> {
-	validate_time(hms)?;
 	let parts: Vec<&str> = hms.split(':').collect();
-	let h: f64 = parts[0].parse().unwrap();
-	let m: f64 = parts[1].parse().unwrap();
-	let s: f64 = parts[2].parse().unwrap();
-	Ok(h * 3600.0 + m * 60.0 + s)
+	if parts.len() != 3 {
+		return Err(AppError::InvalidTimeFormat(hms.to_string()));
+	}
+	let h: u32 = parts[0].parse().map_err(|_| AppError::InvalidTimeFormat(hms.to_string()))?;
+	let m: u32 = parts[1].parse().map_err(|_| AppError::InvalidTimeFormat(hms.to_string()))?;
+	let s: u32 = parts[2].parse().map_err(|_| AppError::InvalidTimeFormat(hms.to_string()))?;
+	if m >= 60 || s >= 60 {
+		return Err(AppError::InvalidTimeRange(hms.to_string()));
+	}
+	Ok(h as f64 * 3600.0 + m as f64 * 60.0 + s as f64)
 }
 
 /// Formats that Chromium's <video> element cannot play natively.
@@ -194,7 +189,7 @@ fn codec_for_format(format: &str, source_codec: Option<&str>) -> &'static str {
 		},
 		"mp3" => "libmp3lame",
 		"ogg" => "libopus",
-		_ => "copy",
+		_ => unreachable!("validate_format must be called before codec_for_format"),
 	}
 }
 
@@ -207,7 +202,8 @@ fn build_output_path(path: &str, format: &str, append: &str) -> Result<String, A
 	let p = Path::new(path);
 	let dir = p.parent().ok_or_else(|| AppError::Io("Cannot determine parent directory".to_string()))?;
 	let stem = p.file_stem().and_then(|s| s.to_str()).ok_or_else(|| AppError::Io("Cannot determine filename".to_string()))?;
-	let suffix = if append.is_empty() { String::new() } else { format!("-{}", append) };
+	let clean_append = append.replace(['/', '\\', '\0'], "");
+	let suffix = if clean_append.is_empty() { String::new() } else { format!("-{}", clean_append) };
 	let output = dir.join(format!("{}{}-audio.{}", stem, suffix, format));
 	output.to_str().map(|s| s.to_string()).ok_or_else(|| AppError::Io("Invalid output path".to_string()))
 }
@@ -271,7 +267,10 @@ struct VideoMetadata {
 async fn get_video_metadata(path: String) -> Result<VideoMetadata, AppError> {
 	validate_path(&path)?;
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
-	let file_size_bytes = std::fs::metadata(&path).map(|m| m.len()).map_err(|e| AppError::Io(format!("Cannot read file metadata: {}", e)))?;
+	let file_size_bytes = tokio::fs::metadata(&path)
+		.await
+		.map(|m| m.len())
+		.map_err(|e| AppError::Io(format!("Cannot read file metadata: {}", e)))?;
 	let audio_codec = get_audio_codec(&path).await;
 	let ext = Path::new(&path).extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
 	Ok(VideoMetadata {
@@ -643,6 +642,25 @@ mod tests {
 	fn uc003_build_output_path_empty_suffix() {
 		let result = build_output_path("/home/user/my_video.mkv", "ogg", "").unwrap();
 		assert_eq!(result, "/home/user/my_video-audio.ogg");
+	}
+
+	/// UC-003 | BR-005: Path separators in suffix are stripped to prevent path traversal
+	#[test]
+	fn uc003_build_output_path_sanitizes_path_separators() {
+		let result = build_output_path("/tmp/video.mp4", "mp3", "foo/../../etc").unwrap();
+		assert_eq!(result, "/tmp/video-foo..etc-audio.mp3");
+	}
+
+	#[test]
+	fn uc003_build_output_path_sanitizes_backslash() {
+		let result = build_output_path("/tmp/video.mp4", "mp3", "a\\b").unwrap();
+		assert_eq!(result, "/tmp/video-ab-audio.mp3");
+	}
+
+	#[test]
+	fn uc003_build_output_path_sanitizes_null_byte() {
+		let result = build_output_path("/tmp/video.mp4", "mp3", "a\0b").unwrap();
+		assert_eq!(result, "/tmp/video-ab-audio.mp3");
 	}
 
 	// UC-003 | BR-006: Codec Optimization

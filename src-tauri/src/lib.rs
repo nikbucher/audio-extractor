@@ -95,12 +95,12 @@ fn find_command(name: &str) -> String {
 	name.to_string()
 }
 
-fn ffmpeg_path() -> &'static str {
+pub(crate) fn ffmpeg_path() -> &'static str {
 	static PATH: OnceLock<String> = OnceLock::new();
 	PATH.get_or_init(|| find_command("ffmpeg"))
 }
 
-fn ffprobe_path() -> &'static str {
+pub(crate) fn ffprobe_path() -> &'static str {
 	static PATH: OnceLock<String> = OnceLock::new();
 	PATH.get_or_init(|| find_command("ffprobe"))
 }
@@ -150,6 +150,40 @@ fn hms_to_seconds(hms: &str) -> Result<f64, AppError> {
 	let m: f64 = parts[1].parse().unwrap();
 	let s: f64 = parts[2].parse().unwrap();
 	Ok(h * 3600.0 + m * 60.0 + s)
+}
+
+/// Formats that Chromium's <video> element cannot play natively.
+pub(crate) fn needs_transcode(ext: &str) -> bool {
+	matches!(ext, "avi" | "mkv")
+}
+
+/// Video codecs that Chromium can decode natively.
+pub(crate) fn is_browser_compatible_video_codec(codec: &str) -> bool {
+	matches!(codec, "h264" | "vp8" | "vp9" | "av1")
+}
+
+/// Probe the video codec of a file using ffprobe.
+pub(crate) async fn get_video_codec(path: &str) -> Option<String> {
+	let output = Command::new(ffprobe_path())
+		.args([
+			"-v",
+			"error",
+			"-select_streams",
+			"v:0",
+			"-show_entries",
+			"stream=codec_name",
+			"-of",
+			"default=noprint_wrappers=1:nokey=1",
+			path,
+		])
+		.output()
+		.await
+		.ok()?;
+	if !output.status.success() {
+		return None;
+	}
+	let codec = String::from_utf8_lossy(&output.stdout).trim().to_string();
+	if codec.is_empty() { None } else { Some(codec) }
 }
 
 fn codec_for_format(format: &str, source_codec: Option<&str>) -> &'static str {
@@ -207,7 +241,7 @@ async fn get_audio_codec(path: &str) -> Option<String> {
 	if codec.is_empty() { None } else { Some(codec) }
 }
 
-async fn get_duration(path: &str) -> Option<f64> {
+pub(crate) async fn get_duration(path: &str) -> Option<f64> {
 	let output = Command::new(ffprobe_path())
 		.args(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path])
 		.output()
@@ -230,6 +264,7 @@ struct VideoMetadata {
 	duration_secs: f64,
 	file_size_bytes: u64,
 	audio_codec: Option<String>,
+	needs_transcode: bool,
 }
 
 #[tauri::command]
@@ -238,10 +273,12 @@ async fn get_video_metadata(path: String) -> Result<VideoMetadata, AppError> {
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
 	let file_size_bytes = std::fs::metadata(&path).map(|m| m.len()).map_err(|e| AppError::Io(format!("Cannot read file metadata: {}", e)))?;
 	let audio_codec = get_audio_codec(&path).await;
+	let ext = Path::new(&path).extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
 	Ok(VideoMetadata {
 		duration_secs,
 		file_size_bytes,
 		audio_codec,
+		needs_transcode: needs_transcode(&ext),
 	})
 }
 
@@ -457,8 +494,13 @@ pub fn run() {
 			get_video_metadata,
 			get_audio_waveform,
 		])
-		.run(tauri::generate_context!())
-		.expect("error while running tauri application");
+		.build(tauri::generate_context!())
+		.expect("error while building tauri application")
+		.run(|_app, event| {
+			if let tauri::RunEvent::Exit = event {
+				media_server::cleanup_transcode();
+			}
+		});
 }
 
 #[cfg(test)]

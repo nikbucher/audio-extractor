@@ -28,6 +28,7 @@ const fileMetaEl = document.getElementById("file-meta");
 const loadNewBtn = document.getElementById("load-new-btn");
 const video = document.getElementById("preview");
 const videoScreen = document.getElementById("video-screen");
+const vidOverlay = document.getElementById("vid-overlay");
 const playRing = document.getElementById("play-ring");
 const icoPlay = document.getElementById("ico-play");
 const icoPause = document.getElementById("ico-pause");
@@ -110,8 +111,9 @@ async function loadVideo(path) {
 	}
 
 	// Get metadata from backend
+	let meta;
 	try {
-		const meta = await invoke("get_video_metadata", { path });
+		meta = await invoke("get_video_metadata", { path });
 		duration = meta.duration_secs;
 		fileNameEl.textContent = fileName;
 		fileMetaEl.textContent = `${formatBytes(meta.file_size_bytes)} · ${tf(duration)}`;
@@ -120,9 +122,16 @@ async function loadVideo(path) {
 		return;
 	}
 
-	// Register path with media server allowlist, then set video source
+	// Register path and set video source.
+	// For formats Chromium can't play (AVI/MKV), the media server transcodes
+	// to fMP4 in-memory and we use hls.js for playback.
 	await invoke("register_media_path", { path: videoPath });
-	video.src = `http://127.0.0.1:${mediaServerPort}/video?path=${encodeURIComponent(videoPath)}`;
+	if (meta.needs_transcode) {
+		vidOverlay.classList.remove("hidden");
+		loadViaHLS(videoPath);
+	} else {
+		video.src = `http://127.0.0.1:${mediaServerPort}/video?path=${encodeURIComponent(videoPath)}`;
+	}
 
 	// Reset state
 	sp = 0;
@@ -155,7 +164,55 @@ async function loadVideo(path) {
 	}, 30);
 }
 
+let activeHls = null;
+
+// ── HLS: progressive fMP4 streaming for AVI/MKV via hls.js ─────────────────
+
+function loadViaHLS(path) {
+	cleanupHLS();
+
+	if (typeof Hls === "undefined" || !Hls.isSupported()) {
+		console.error("[hls] hls.js not supported");
+		vidOverlay.classList.add("hidden");
+		return;
+	}
+
+	const hlsUrl = `http://127.0.0.1:${mediaServerPort}/hls?path=${encodeURIComponent(path)}`;
+
+	const hls = new Hls({
+		startPosition: 0, // Start from beginning, not live edge
+		maxBufferLength: 60,
+		maxMaxBufferLength: 120,
+		maxBufferSize: 200 * 1024 * 1024,
+	});
+
+	activeHls = hls;
+	hls.loadSource(hlsUrl);
+	hls.attachMedia(video);
+
+	hls.on(Hls.Events.ERROR, (_event, data) => {
+		console.warn(`[hls] ${data.type}: ${data.details}${data.fatal ? " (fatal)" : ""}`);
+		if (data.fatal) {
+			if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+				// Playlist may be empty during early transcode — retry
+				setTimeout(() => hls.startLoad(), 500);
+			} else {
+				hls.destroy();
+			}
+		}
+	});
+}
+
+function cleanupHLS() {
+	if (activeHls) {
+		activeHls.destroy();
+		activeHls = null;
+	}
+}
+
 function loadNew() {
+	vidOverlay.classList.add("hidden");
+	cleanupHLS();
 	editor.style.display = "none";
 	dropZone.style.display = "";
 	video.pause();
@@ -330,12 +387,15 @@ videoScreen.addEventListener("click", () => {
 		if (video.currentTime < rangeStart || video.currentTime >= rangeEnd) {
 			video.currentTime = rangeStart;
 		}
-		video.play();
+		video.play().catch((e) => { if (e.name !== "AbortError") console.warn("[video] play failed:", e.message); });
 	} else {
 		video.pause();
 	}
 });
 
+video.addEventListener("canplay", () => vidOverlay.classList.add("hidden"));
+video.addEventListener("loadeddata", () => vidOverlay.classList.add("hidden"));
+video.addEventListener("error", () => console.error(`[video] error: code=${video.error?.code} msg=${video.error?.message}`));
 video.addEventListener("play", () => updatePlayIcons(true));
 video.addEventListener("pause", () => updatePlayIcons(false));
 

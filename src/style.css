@@ -66,6 +66,11 @@ html, body {
 .video-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; background: var(--color-background-primary); display: flex; flex-direction: column }
 .video-screen { background: #111; flex: 1; min-height: 200px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden }
 .video-screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain }
+.vid-overlay { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.65); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px }
+.vid-overlay.hidden { display: none }
+.vid-overlay-text { font-size: 13px; color: rgba(255,255,255,.8); font-weight: 500 }
+.vid-spinner { width: 28px; height: 28px; border: 2.5px solid rgba(255,255,255,.2); border-top-color: rgba(255,255,255,.8); border-radius: 50%; animation: spin .7s linear infinite }
+@keyframes spin { to { transform: rotate(360deg) } }
 .play-ring { width: 52px; height: 52px; border-radius: 50%; background: rgba(255, 255, 255, .14); display: flex; align-items: center; justify-content: center; transition: background .15s; z-index: 2 }
 .play-ring:hover { background: rgba(255, 255, 255, .24) }
 .play-ring.hidden { display: none }

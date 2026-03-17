@@ -4,6 +4,7 @@
 	<meta charset="UTF-8">
 	<title>AudioSnip</title>
 	<link rel="stylesheet" href="style.css">
+	<script src="assets/hls-1.6.15.min.js"></script>
 	<script src="script.js" defer></script>
 </head>
 <body>
@@ -42,6 +43,10 @@
 			<div class="video-card">
 				<div class="video-screen" id="video-screen">
 					<video id="preview"></video>
+					<div class="vid-overlay hidden" id="vid-overlay">
+						<div class="vid-spinner"></div>
+						<span class="vid-overlay-text">Preparing preview…</span>
+					</div>
 					<div class="play-ring" id="play-ring">
 						<svg id="ico-play" width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21"/></svg>
 						<svg id="ico-pause" width="20" height="20" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="5" y="4" width="4" height="16"/><rect x="15" y="4" width="4" height="16"/></svg>

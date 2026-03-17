@@ -6,7 +6,7 @@
 **Use Case Name:** Serve Video Preview
 **Primary Actor:** Browser (Video Element)
 **Goal:** Provide a playable video stream for in-app preview
-**Status:** Draft
+**Status:** Implemented
 
 ## Preconditions
 

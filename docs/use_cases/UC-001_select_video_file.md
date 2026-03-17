@@ -6,7 +6,7 @@
 **Use Case Name:** Select Video File
 **Primary Actor:** User
 **Goal:** Load a video file into the application for audio extraction
-**Status:** Draft
+**Status:** Tested
 
 ## Preconditions
 

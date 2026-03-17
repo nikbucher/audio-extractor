@@ -6,7 +6,7 @@
 **Use Case Name:** Cancel Extraction
 **Primary Actor:** User
 **Goal:** Stop an ongoing audio extraction before it completes
-**Status:** Draft
+**Status:** Implemented
 
 ## Preconditions
 

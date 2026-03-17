@@ -6,7 +6,7 @@
 **Use Case Name:** Preview Selected Range
 **Primary Actor:** User
 **Goal:** Define and preview a time range to verify the audio selection before extracting
-**Status:** Draft
+**Status:** Tested
 
 ## Preconditions
 

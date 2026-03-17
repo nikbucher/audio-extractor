@@ -6,7 +6,7 @@
 **Use Case Name:** Extract Audio
 **Primary Actor:** User
 **Goal:** Extract the audio from the selected video range and save it as an audio file
-**Status:** Draft
+**Status:** Tested
 
 ## Preconditions
 

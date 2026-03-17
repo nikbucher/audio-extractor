@@ -32,7 +32,7 @@ Run filtered tests with `cargo test uc001`, `cargo test uc002`, etc.
 
 | Scenario                   | Tested  | Tests                                                                                                      |
 |----------------------------|---------|------------------------------------------------------------------------------------------------------------|
-| Main Success               | Yes     | `uc003_validate_format_accepts_supported`, `uc003_build_output_path_*` (3), `uc003_codec_for_format_*` (4) |
+| Main Success               | Yes     | `uc003_validate_format_accepts_supported`, `uc003_build_output_path_*` (6), `uc003_codec_for_format_*` (4) |
 | A1: FFmpeg Not Installed   | No      | Requires integration test with missing binary                                                              |
 | A2: Extraction Fails       | Partial | `uc003_validate_format_rejects_unsupported` — format rejection tested, FFmpeg error path not tested        |
 | A3: Choose Output Location | No      | Not yet implemented                                                                                        |
@@ -65,7 +65,7 @@ Run filtered tests with `cargo test uc001`, `cargo test uc002`, etc.
 | BR-002 | Time Format (HH:MM:SS)           | UC-002 | Yes     | `uc002_validate_time_*` (5), `uc002_hms_to_seconds_*` (3)                                                                 |
 | BR-003 | Range Constraints                | UC-002 | Partial | `uc002_range_start_before_end` — "within duration" not tested                                                             |
 | BR-004 | Supported Output Formats         | UC-003 | Yes     | `uc003_validate_format_accepts_supported`, `uc003_validate_format_rejects_unsupported`                                    |
-| BR-005 | Output Filename Convention       | UC-003 | Yes     | `uc003_build_output_path_*` (3)                                                                                           |
+| BR-005 | Output Filename Convention       | UC-003 | Yes     | `uc003_build_output_path_*` (6)                                                                                           |
 | BR-006 | Codec Optimization               | UC-003 | Yes     | `uc003_codec_for_format_*` (4)                                                                                            |
 | BR-007 | Partial File Cleanup             | UC-004 | Partial | `uc004_cancel_flag_store_and_load` — flag tested, file deletion not                                                       |
 | BR-008 | Transcode-Required Containers    | UC-005 | No      |                                                                                                                           |
@@ -78,7 +78,7 @@ Run filtered tests with `cargo test uc001`, `cargo test uc002`, etc.
 |------------|-------|--------|---------|------------|
 | Scenarios  | 23    | 6      | 1       | 16         |
 | Bus. Rules | 10    | 5      | 2       | 3          |
-| Tests      | 22    |        |         |            |
+| Tests      | 27    |        |         |            |
 
 ### Untested Scenarios — Justification
 

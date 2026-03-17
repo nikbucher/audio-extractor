@@ -87,7 +87,7 @@
 
 ### BR-002: Time Format
 
-Time values are displayed and entered in HH:MM:SS format.
+Time values are transmitted in HH:MM:SS format. The display may use a shorter notation (e.g., M:SS) when hours are zero.
 
 ### BR-003: Range Constraints
 

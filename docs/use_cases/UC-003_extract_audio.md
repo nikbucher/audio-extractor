@@ -75,7 +75,7 @@ The user can choose from AAC, MP3, or OGG.
 
 ### BR-005: Output Filename Convention
 
-The output file is named `{video-stem}{-suffix}-audio.{format}`, saved in the same folder as the source video by default.
+The output file is named `{video-stem}{-suffix}-audio.{format}`, saved in the same folder as the source video by default. Path separators (`/`, `\`) and null bytes in the suffix are stripped to prevent path traversal.
 
 ### BR-006: Codec Optimization
 

@@ -6,6 +6,7 @@ use axum::{
 	response::Response,
 	routing::get,
 };
+use log::{error, info};
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -152,13 +153,13 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 	}
 	args.extend_from_slice(&["-movflags", "frag_keyframe+empty_moov+default_base_moof", "-f", "mp4", "pipe:1"]);
 
-	println!("[transcode] start: codec={}, strategy={}, duration={:.1}s", vcodec, if can_remux { "remux" } else { "encode" }, dur);
+	info!("Transcode start: codec={}, strategy={}, duration={:.1}s", vcodec, if can_remux { "remux" } else { "encode" }, dur);
 	let t_start = std::time::Instant::now();
 
 	let mut child = match tokio::process::Command::new(crate::ffmpeg_path()).args(&args).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
 		Ok(c) => c,
 		Err(e) => {
-			eprintln!("[transcode] spawn failed: {}", e);
+			error!("Transcode spawn failed: {}", e);
 			session.complete.store(true, Ordering::Release);
 			session.notify.notify_waiters();
 			return;
@@ -172,7 +173,7 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 		loop {
 			if session.abort.load(Ordering::Acquire) {
 				let _ = child.kill().await;
-				println!("[transcode] aborted");
+				info!("Transcode aborted");
 				break;
 			}
 			match timeout(Duration::from_secs(30), stdout.read(&mut buf)).await {
@@ -183,7 +184,7 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 				}
 				Ok(Err(_)) => break,
 				Err(_) => {
-					eprintln!("[transcode] read timeout (30s), killing FFmpeg");
+					error!("Transcode read timeout (30s), killing FFmpeg");
 					let _ = child.kill().await;
 					break;
 				}
@@ -199,15 +200,15 @@ async fn run_transcode(path: &str, session: &TranscodeSession) {
 	let elapsed = t_start.elapsed().as_secs_f64();
 
 	match status {
-		Ok(s) if s.success() => println!("[transcode] done: {:.1}s, {} bytes", elapsed, size),
+		Ok(s) if s.success() => info!("Transcode done: {:.1}s, {} bytes", elapsed, size),
 		Ok(s) => {
 			let mut stderr_buf = String::new();
 			if let Some(mut stderr) = stderr_handle {
 				let _ = stderr.read_to_string(&mut stderr_buf).await;
 			}
-			eprintln!("[transcode] failed (exit {}): {}", s, stderr_buf.lines().last().unwrap_or("unknown error"));
+			error!("Transcode failed (exit {}): {}", s, stderr_buf.lines().last().unwrap_or("unknown error"));
 		}
-		Err(e) => eprintln!("[transcode] wait error: {}", e),
+		Err(e) => error!("Transcode wait error: {}", e),
 	}
 }
 
@@ -435,7 +436,7 @@ pub fn start() -> u16 {
 				res.headers_mut().insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
 				res
 			}));
-		println!("[media_server] Listening on 127.0.0.1:{}", port);
+		info!("Media server listening on 127.0.0.1:{}", port);
 		axum::serve(listener, app).await.expect("Media server error");
 	});
 

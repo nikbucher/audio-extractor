@@ -1,12 +1,14 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod media_server;
 
+use log::{debug, error, info, warn};
 use std::collections::HashSet;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Mutex, OnceLock};
 use tauri::Emitter;
+use tauri_plugin_log::{Target, TargetKind};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 
@@ -35,7 +37,7 @@ pub fn is_path_registered(path: &str) -> bool {
 #[tauri::command]
 fn cancel_extraction() {
 	CANCEL_FLAG.store(true, Ordering::Release);
-	println!("[cancel] Extraction cancel requested");
+	info!("Extraction cancel requested");
 }
 
 const ALLOWED_FORMATS: &[&str] = &["aac", "mp3", "ogg"];
@@ -226,7 +228,7 @@ async fn get_audio_codec(path: &str) -> Option<String> {
 	let output = match output {
 		Ok(out) => out,
 		Err(e) => {
-			eprintln!("[ffprobe] Failed to run ffprobe: {}. Is FFmpeg/FFprobe installed and in your PATH?", e);
+			error!("Failed to run ffprobe: {}. Is FFmpeg/FFprobe installed and in your PATH?", e);
 			return None;
 		}
 	};
@@ -245,7 +247,7 @@ pub(crate) async fn get_duration(path: &str) -> Option<f64> {
 	let output = match output {
 		Ok(out) => out,
 		Err(e) => {
-			eprintln!("[ffprobe] Failed to get duration: {}", e);
+			error!("Failed to get duration: {}", e);
 			return None;
 		}
 	};
@@ -391,7 +393,7 @@ async fn extract_audio_range(app: tauri::AppHandle, path: String, start: String,
 	}
 
 	CANCEL_FLAG.store(false, Ordering::Release);
-	println!("[extract_audio_range] path={}, start={}, end={}, output={}", path, start, end, output);
+	info!("Extracting range: path={}, start={}, end={}, output={}", path, start, end, output);
 
 	// Place -ss before -i for fast input seeking; use -t (duration) since
 	// -to is relative to the input start when -ss precedes -i.
@@ -411,7 +413,7 @@ async fn extract_whole_audio(app: tauri::AppHandle, path: String, format: String
 	let duration_secs = get_duration(&path).await.unwrap_or(0.0);
 
 	CANCEL_FLAG.store(false, Ordering::Release);
-	println!("[extract_whole_audio] path={}, output={}", path, output);
+	info!("Extracting whole: path={}, output={}", path, output);
 
 	let args = vec!["-y", "-i", &path, "-vn", "-c:a", acodec, "-progress", "pipe:1", &output];
 
@@ -436,7 +438,7 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 		let mut lines = reader.lines();
 		while let Ok(Some(line)) = lines.next_line().await {
 			if CANCEL_FLAG.load(Ordering::Acquire) {
-				println!("[ffmpeg] Cancel requested, killing process");
+				info!("Cancel requested, killing FFmpeg");
 				let _ = child.kill().await;
 				cancelled = true;
 				break;
@@ -458,30 +460,39 @@ async fn run_ffmpeg_command(args: &[&str], duration_secs: f64, output_path: &str
 
 	let status = child.wait().await.map_err(|e| AppError::FfmpegFailed(e.to_string()))?;
 
-	println!("[ffmpeg] exited with status: {}", status);
+	debug!("FFmpeg exited: {}", status);
 	if !status.success() {
 		let mut stderr_buf = String::new();
 		if let Some(mut stderr) = stderr_handle {
 			let _ = stderr.read_to_string(&mut stderr_buf).await;
 		}
-		println!("[ffmpeg] stderr: {}", stderr_buf);
+		warn!("FFmpeg stderr: {}", stderr_buf);
 		return Err(AppError::FfmpegFailed(stderr_buf));
 	}
 
 	let _ = app.emit("extraction-progress", 100.0_f64);
-	println!("[ffmpeg] Success!");
+	info!("Extraction complete");
 	Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+	let mut log_targets = vec![Target::new(TargetKind::Stdout)];
+	if cfg!(debug_assertions) {
+		log_targets.push(Target::new(TargetKind::Folder {
+			path: std::env::current_dir().unwrap_or_default(),
+			file_name: Some("audio-snip.log".into()),
+		}));
+	}
+
 	tauri::Builder::default()
+		.plugin(tauri_plugin_log::Builder::new().targets(log_targets).build())
 		.plugin(tauri_plugin_dialog::init())
 		.plugin(tauri_plugin_opener::init())
 		.setup(|_app| {
 			let port = media_server::start();
 			MEDIA_SERVER_PORT.store(port, Ordering::Relaxed);
-			println!("[setup] Media server started on port {}", port);
+			info!("Media server started on port {}", port);
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![

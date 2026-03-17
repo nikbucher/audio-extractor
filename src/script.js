@@ -51,6 +51,7 @@ const hStart = document.getElementById("h-start");
 const hEnd = document.getElementById("h-end");
 const playhead = document.getElementById("playhead");
 const wfTimes = document.getElementById("wf-times");
+const wfLoading = document.getElementById("wf-loading");
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,11 @@ async function loadVideo(path) {
 	dropZone.style.display = "none";
 	editor.style.display = "flex";
 
+	// Clear previous waveform and show loading indicator
+	waveformData = [];
+	drawWave();
+	wfLoading.classList.remove("hidden");
+
 	// Load waveform
 	try {
 		waveformData = await invoke("get_audio_waveform", { path });
@@ -158,6 +164,7 @@ async function loadVideo(path) {
 		waveformData = new Array(240).fill(0.5);
 	}
 
+	wfLoading.classList.add("hidden");
 	setTimeout(() => {
 		initDrag();
 		refresh();
@@ -265,9 +272,12 @@ function drawWave() {
 	ctx.scale(dpr, dpr);
 	ctx.clearRect(0, 0, W, H);
 
+	// If no data yet (loading), just leave canvas cleared
+	if (!waveformData.length) return;
+
 	const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 	const inactive = dark ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.11)";
-	const data = waveformData.length ? waveformData : new Array(240).fill(0.3);
+	const data = waveformData;
 	const n = data.length;
 	const bw = Math.max(1.5, (W / n) * 0.56);
 

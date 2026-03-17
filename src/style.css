@@ -106,6 +106,9 @@ html, body {
 .wf-label { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-secondary) }
 .wf-sel-info { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-secondary) }
 .wf-wrap { position: relative; height: 72px; user-select: none }
+.wf-loading { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--color-text-tertiary) }
+.wf-loading.hidden { display: none }
+.wf-spinner { width: 16px; height: 16px; border: 2px solid var(--color-border-secondary); border-top-color: var(--color-text-secondary); border-radius: 50%; animation: spin .7s linear infinite }
 #wf-canvas { width: 100%; height: 72px; display: block; border-radius: 4px; cursor: crosshair }
 .wf-handle { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-text-primary); cursor: ew-resize; z-index: 5; touch-action: none }
 .wf-handle::before, .wf-handle::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; background: var(--color-text-primary); border-radius: 50% }
